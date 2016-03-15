@@ -26,6 +26,7 @@ pub fn parse(s: &str) -> Data {
     let mut l = String::new();
     let mut r = String::new();
     let mut sec = String::new();
+    let mut ws = String::new();
     let mut state = State::Init;
 
     for c in s.chars() {
@@ -71,7 +72,7 @@ pub fn parse(s: &str) -> Data {
                 if c.is_alphanumeric() || ".+-_/".contains(c) {
                     r.push(c);
                     state = State::ReadValue;
-                } else if c.is_whitespace() {
+                } else if c.is_whitespace() || c == ',' {
                     state = State::WhitespaceAfterValue;
                 } else {
                     panic!("something went wrong!");
@@ -79,9 +80,16 @@ pub fn parse(s: &str) -> Data {
             }
 
             State::WhitespaceAfterValue => {
-                if c == ';' {
+                if c.is_alphanumeric() {
+                    r.push_str(&ws);
+                    ws.clear();
+                    r.push(c);
+                    state = State::ReadValue;
+                } else if c == ';' {
                     state = State::Pair;
+                    break;
                 } else if c.is_whitespace() {
+                    ws.push(c);
                 } else {
                     panic!("something went wrong!");
                 }

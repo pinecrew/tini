@@ -32,7 +32,7 @@ pub fn parse(s: &str) -> Data {
     for c in s.chars() {
         match state {
             State::Init => {
-                if c.is_alphabetic() {
+                if c.is_alphabetic() || "_.,:(){}-#@&*|".contains(c) {
                     l.push(c);
                     state = State::ReadKey;
                 } else if c == '[' {
@@ -44,7 +44,7 @@ pub fn parse(s: &str) -> Data {
                 }
             }
             State::ReadKey => {
-                if c.is_alphanumeric() {
+                if c.is_alphanumeric() || "_.,:(){}-#@&*|".contains(c) {
                     l.push(c);
                 } else if c.is_whitespace() {
                     state = State::WhitespaceAfterKey;
@@ -75,7 +75,7 @@ pub fn parse(s: &str) -> Data {
                 } else if c.is_whitespace() || c == ',' {
                     state = State::WhitespaceAfterValue;
                 } else {
-                    panic!("something went wrong!");
+                    panic!("incorrect char `{}`", c);
                 }
             }
 
@@ -147,8 +147,41 @@ mod test {
     #[test]
     fn test_entry() {
         match parse("name1 = 100 ; comment") {
-            Data::Pair(name, value) => assert_eq!((name, value), (String::from("name1"), String::from("100"))),
+            Data::Pair(name, text) => {
+                assert_eq!(name, String::from("name1"));
+                assert_eq!(text, String::from("100"));
+            }
             _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_weird_name() {
+        match parse("_.,:(){}-#@&*| = 100") {
+            Data::Pair(name, text) => {
+                assert_eq!(name, String::from("_.,:(){}-#@&*|"));
+                assert_eq!(text, String::from("100"));
+            },
+            _ => assert!(false)
+        }
+    }
+
+    #[test]
+    fn test_text_entry() {
+        match parse("text_name = hello world!") {
+            Data::Pair(name, text) => {
+                assert_eq!(name, String::from("text_name"));
+                assert_eq!(text, String::from("hello world!"));
+            },
+            _ => assert!(false)
+        }
+    }
+
+    #[test]
+    fn test_incorrect_token() {
+        match parse("[section = 1, 2 = value") {
+            Data::Error => assert!(true),
+            _ => assert!(false)
         }
     }
 }

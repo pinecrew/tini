@@ -6,6 +6,8 @@ use std::io::{self, BufReader};
 use std::io::prelude::*;
 use std::fs::File;
 
+use parser::{parse, Data};
+
 type IniData = HashMap<String, HashMap<String, String>>;
 
 #[derive(Debug)]
@@ -25,25 +27,40 @@ impl<'a> Ini {
         let mut entry_list = HashMap::new();
         for line in reader.lines().filter_map(|l| l.ok()) {
             println!("line = `{}`", line);
-            if line.contains('[') && line.contains(']') {
-                let left_pos = line.find('[').unwrap() + 1;
-                let right_pos = line.find(']').unwrap();
-                if section_name.len() != 0 {
-                    result.0.insert(section_name, entry_list.clone());
-                    entry_list.clear();
+            match parse(&line) {
+                Data::Section(name) => {
+                    if section_name.len() != 0 {
+                        result.0.insert(section_name, entry_list.clone());
+                        entry_list.clear();
+                    }
+                    println!("section = `{}`", name);
+                    section_name = name;
                 }
-                section_name = (&line[left_pos..right_pos]).to_owned();
-            } else if !line.starts_with(';') {
-                let vec: Vec<&str> = line.split('=').collect();
-                if vec.len() < 2 { continue; }
-                let token = vec[0].trim_right();
-                let value = if vec[1].contains(';') {
-                    vec[1].split(';').nth(0).unwrap().trim()
-                } else {
-                    vec[1].trim()
-                };
-                entry_list.insert(token.to_owned(), value.to_owned());
-            }
+                Data::Pair(name, value) => {
+                    println!("`{}` = `{}`", name, value);
+                    entry_list.insert(name, value);
+                }
+                _ => ()
+            };
+            // if line.contains('[') && line.contains(']') {
+            //     let left_pos = line.find('[').unwrap() + 1;
+            //     let right_pos = line.find(']').unwrap();
+            //     if section_name.len() != 0 {
+            //         result.0.insert(section_name, entry_list.clone());
+            //         entry_list.clear();
+            //     }
+            //     section_name = (&line[left_pos..right_pos]).to_owned();
+            // } else if !line.starts_with(';') {
+            //     let vec: Vec<&str> = line.split('=').collect();
+            //     if vec.len() < 2 { continue; }
+            //     let token = vec[0].trim_right();
+            //     let value = if vec[1].contains(';') {
+            //         vec[1].split(';').nth(0).unwrap().trim()
+            //     } else {
+            //         vec[1].trim()
+            //     };
+            //     entry_list.insert(token.to_owned(), value.to_owned());
+            // }
         }
         // add last section
         if section_name.len() != 0 {

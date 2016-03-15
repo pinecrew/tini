@@ -1,4 +1,4 @@
-enum Data {
+pub enum Data {
     Section(String),
     Pair(String, String),
     Empty,
@@ -22,7 +22,7 @@ enum State {
     Empty,
 }
 
-fn parse(s: &str) -> Data {
+pub fn parse(s: &str) -> Data {
     let mut l = String::new();
     let mut r = String::new();
     let mut sec = String::new();
@@ -43,7 +43,7 @@ fn parse(s: &str) -> Data {
                 }
             }
             State::ReadKey => {
-                if c.is_alphabetic() {
+                if c.is_alphanumeric() {
                     l.push(c);
                 } else if c.is_whitespace() {
                     state = State::WhitespaceAfterKey;
@@ -68,7 +68,7 @@ fn parse(s: &str) -> Data {
             }
 
             State::ReadValue => {
-                if c.is_alphanumeric() || ".+-_".contains(c) {
+                if c.is_alphanumeric() || ".+-_/".contains(c) {
                     r.push(c);
                     state = State::ReadValue;
                 } else if c.is_whitespace() {

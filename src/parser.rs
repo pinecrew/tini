@@ -36,7 +36,9 @@ fn parse(s: &str) -> Data {
                     state = State::ReadKey;
                 } else if c == '[' {
                     state = State::ReadSection;
-                } else if c.is_whitespace() {} else {
+                } else if c.is_whitespace() {} else if c == ';' {
+                    state = State::Empty;
+                } else {
                     panic!("something went wrong!");
                 }
             }
@@ -122,3 +124,10 @@ fn parse(s: &str) -> Data {
     result
 }
 
+#[test]
+fn test_comment() {
+    match parse(";------") {
+        Data::Empty => assert!(true),
+        _ => assert!(false),
+    }
+}

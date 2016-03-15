@@ -1,3 +1,5 @@
+mod parser;
+
 use std::path::Path;
 use std::collections::HashMap;
 use std::io::{self, BufReader};

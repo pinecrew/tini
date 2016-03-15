@@ -132,10 +132,23 @@ pub fn parse(s: &str) -> Data {
     result
 }
 
-#[test]
-fn test_comment() {
-    match parse(";------") {
-        Data::Empty => assert!(true),
-        _ => assert!(false),
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_comment() {
+        match parse(";------") {
+            Data::Empty => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn test_entry() {
+        match parse("name1 = 100 ; comment") {
+            Data::Pair(name, value) => assert_eq!((name, value), (String::from("name1"), String::from("100"))),
+            _ => assert!(false),
+        }
     }
 }

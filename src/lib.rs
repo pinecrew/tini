@@ -17,15 +17,11 @@ impl<'a> Ini {
     fn new() -> Ini {
         Ini(HashMap::new())
     }
-    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Ini {
-        let file = File::open(path)
-                       .ok()
-                       .expect(&format!("Can't open `{}` file!", path.as_ref().display()));
-        let reader = BufReader::new(file);
+    fn from_string(string: &str) -> Ini {
         let mut result = Ini::new();
         let mut section_name = String::new();
         let mut entry_list = HashMap::new();
-        for (i, line) in reader.lines().filter_map(|l| l.ok()).enumerate() {
+        for (i, line) in string.lines().enumerate() {
             println!("line = `{}`", line);
             match parse(&line) {
                 Data::Section(name) => {
@@ -51,8 +47,18 @@ impl<'a> Ini {
         }
         result
     }
+
+    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Ini {
+        let file = File::open(path)
+                       .ok()
+                       .expect(&format!("Can't open `{}` file!", path.as_ref().display()));
+        let mut reader = BufReader::new(file);
+        let mut buffer = String::new();
+        reader.read_to_string(&mut buffer);
+        Ini::from_string(&buffer)
+    }
     pub fn from_buffer<S: Into<String>>(buf: S) -> Ini {
-        unimplemented!()
+        Ini::from_string(&buf.into())
     }
     pub fn section<S: Into<String>>(&'a self, name: S) -> Option<&'a HashMap<String, String>> {
         let name = name.into();

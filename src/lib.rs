@@ -22,18 +22,15 @@ impl<'a> Ini {
         let mut section_name = String::new();
         let mut entry_list = HashMap::new();
         for (i, line) in string.lines().enumerate() {
-            println!("line = `{}`", line);
             match parse(&line) {
                 Data::Section(name) => {
                     if section_name.len() != 0 {
                         result.0.insert(section_name, entry_list.clone());
                         entry_list.clear();
                     }
-                    println!("section = `{}`", name);
                     section_name = name;
                 }
                 Data::Pair(name, value) => {
-                    println!("`{}` = `{}`", name, value);
                     entry_list.insert(name, value);
                 }
                 Data::Error(msg) => println!("line {}: error: {}", i, msg),

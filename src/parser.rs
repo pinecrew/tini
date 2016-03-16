@@ -2,7 +2,7 @@ pub enum Data {
     Section(String),
     Pair(String, String),
     Empty,
-    Error,
+    Error(String),
 }
 
 #[derive(Debug)]
@@ -24,7 +24,7 @@ enum State {
 
 static IDENT: &'static str = "_.,:(){}-#@&*|";
 
-pub fn parse(s: &str) -> Result<Data, String> {
+pub fn parse(s: &str) -> Data {
     let mut l = String::new();
     let mut r = String::new();
     let mut sec = String::new();
@@ -42,7 +42,7 @@ pub fn parse(s: &str) -> Result<Data, String> {
                 } else if c.is_whitespace() {} else if c == ';' {
                     state = State::Empty;
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::ReadKey => {
@@ -51,14 +51,14 @@ pub fn parse(s: &str) -> Result<Data, String> {
                 } else if c.is_whitespace() {
                     state = State::WhitespaceAfterKey;
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::WhitespaceAfterKey => {
                 if c == '=' {
                     state = State::WhitespaceBeforeValue;
                 } else if c.is_whitespace() {} else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::WhitespaceBeforeValue => {
@@ -66,18 +66,19 @@ pub fn parse(s: &str) -> Result<Data, String> {
                     r.push(c);
                     state = State::ReadValue;
                 } else if c.is_whitespace() {} else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
             State::ReadValue => {
-                if c.is_alphanumeric() || ".+-_/".contains(c) {
+                if c.is_alphanumeric() || ".+-_/!".contains(c) {
                     r.push(c);
                     state = State::ReadValue;
                 } else if c.is_whitespace() || c == ',' {
                     state = State::WhitespaceAfterValue;
+                    ws.push(c);
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -93,7 +94,7 @@ pub fn parse(s: &str) -> Result<Data, String> {
                 } else if c.is_whitespace() {
                     ws.push(c);
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -103,7 +104,7 @@ pub fn parse(s: &str) -> Result<Data, String> {
                 } else if c == ']' {
                     state = State::WhitespaceAfterBracket;
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -112,7 +113,7 @@ pub fn parse(s: &str) -> Result<Data, String> {
                     state = State::Section;
                 } else if c.is_whitespace() {
                 } else {
-                    return Err(format!("incorrect char `{}` in {:?}", c, state));
+                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             _ => {}
@@ -122,6 +123,7 @@ pub fn parse(s: &str) -> Result<Data, String> {
     match state {
         State::WhitespaceAfterValue | State::ReadValue => state = State::Pair,
         State::WhitespaceAfterBracket => state = State::Section,
+        State::Init => state = State::Empty,
         _ => {}
     }
 
@@ -129,9 +131,9 @@ pub fn parse(s: &str) -> Result<Data, String> {
         State::Pair => Data::Pair(l, r),
         State::Section => Data::Section(sec),
         State::Empty => Data::Empty,
-        _ => Data::Error,
+        _ => Data::Error("Incorrect expression".to_owned()),
     };
-    Ok(result)
+    result
 }
 
 #[cfg(test)]
@@ -140,7 +142,7 @@ mod test {
 
     #[test]
     fn test_comment() {
-        match parse(";------").unwrap() {
+        match parse(";------") {
             Data::Empty => assert!(true),
             _ => assert!(false),
         }
@@ -148,7 +150,7 @@ mod test {
 
     #[test]
     fn test_entry() {
-        match parse("name1 = 100 ; comment").unwrap() {
+        match parse("name1 = 100 ; comment") {
             Data::Pair(name, text) => {
                 assert_eq!(name, String::from("name1"));
                 assert_eq!(text, String::from("100"));
@@ -159,31 +161,31 @@ mod test {
 
     #[test]
     fn test_weird_name() {
-        match parse("_.,:(){}-#@&*| = 100").unwrap() {
+        match parse("_.,:(){}-#@&*| = 100") {
             Data::Pair(name, text) => {
                 assert_eq!(name, String::from("_.,:(){}-#@&*|"));
                 assert_eq!(text, String::from("100"));
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
     #[test]
     fn test_text_entry() {
-        match parse("text_name = hello world!").unwrap() {
+        match parse("text_name = hello world!") {
             Data::Pair(name, text) => {
                 assert_eq!(name, String::from("text_name"));
                 assert_eq!(text, String::from("hello world!"));
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
     #[test]
     fn test_incorrect_token() {
-        match parse("[section = 1, 2 = value").unwrap() {
-            Data::Error => assert!(true),
-            _ => assert!(false)
+        match parse("[section = 1, 2 = value") {
+            Data::Error(e) => assert!(true),
+            _ => assert!(false),
         }
     }
 }

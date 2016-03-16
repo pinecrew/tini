@@ -19,15 +19,15 @@ impl<'a> Ini {
     }
     pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Ini {
         let file = File::open(path)
-                        .ok()
-                        .expect(&format!("Can't open `{}` file!", path.as_ref().display()));
+                       .ok()
+                       .expect(&format!("Can't open `{}` file!", path.as_ref().display()));
         let reader = BufReader::new(file);
         let mut result = Ini::new();
         let mut section_name = String::new();
         let mut entry_list = HashMap::new();
-        for line in reader.lines().filter_map(|l| l.ok()) {
+        for (i, line) in reader.lines().filter_map(|l| l.ok()).enumerate() {
             println!("line = `{}`", line);
-            match parse(&line).ok().unwrap() {
+            match parse(&line) {
                 Data::Section(name) => {
                     if section_name.len() != 0 {
                         result.0.insert(section_name, entry_list.clone());
@@ -40,7 +40,8 @@ impl<'a> Ini {
                     println!("`{}` = `{}`", name, value);
                     entry_list.insert(name, value);
                 }
-                _ => ()
+                Data::Error(msg) => println!("line {}: error: {}", i, msg),
+                _ => (),
             };
         }
         // add last section

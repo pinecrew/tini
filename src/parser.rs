@@ -1,6 +1,6 @@
-pub enum Data {
+pub enum Parsed {
     Section(String),
-    Pair(String, String),
+    Key(String, String),
     Empty,
     Error(String),
 }
@@ -17,14 +17,14 @@ enum State {
     WhitespaceAfterValue,
     WhitespaceBeforeValue,
 
-    Pair,
+    Key,
     Section,
     Empty,
 }
 
 static IDENT: &'static str = "_.,:(){}-#@&*|";
 
-pub fn parse(s: &str) -> Data {
+pub fn parse_line(s: &str) -> Parsed {
     let mut l = String::new();
     let mut r = String::new();
     let mut sec = String::new();
@@ -42,7 +42,7 @@ pub fn parse(s: &str) -> Data {
                 } else if c.is_whitespace() {} else if c == ';' {
                     state = State::Empty;
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::ReadKey => {
@@ -51,14 +51,14 @@ pub fn parse(s: &str) -> Data {
                 } else if c.is_whitespace() {
                     state = State::WhitespaceAfterKey;
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::WhitespaceAfterKey => {
                 if c == '=' {
                     state = State::WhitespaceBeforeValue;
                 } else if c.is_whitespace() {} else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             State::WhitespaceBeforeValue => {
@@ -66,7 +66,7 @@ pub fn parse(s: &str) -> Data {
                     r.push(c);
                     state = State::ReadValue;
                 } else if c.is_whitespace() {} else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -78,7 +78,7 @@ pub fn parse(s: &str) -> Data {
                     state = State::WhitespaceAfterValue;
                     ws.push(c);
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -89,12 +89,12 @@ pub fn parse(s: &str) -> Data {
                     r.push(c);
                     state = State::ReadValue;
                 } else if c == ';' {
-                    state = State::Pair;
+                    state = State::Key;
                     break;
                 } else if c.is_whitespace() {
                     ws.push(c);
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -104,7 +104,7 @@ pub fn parse(s: &str) -> Data {
                 } else if c == ']' {
                     state = State::WhitespaceAfterBracket;
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
 
@@ -113,7 +113,7 @@ pub fn parse(s: &str) -> Data {
                     state = State::Section;
                 } else if c.is_whitespace() {
                 } else {
-                    return Data::Error(format!("incorrect char `{}` in {:?}", c, state));
+                    return Parsed::Error(format!("incorrect char `{}` in {:?}", c, state));
                 }
             }
             _ => {}
@@ -121,17 +121,17 @@ pub fn parse(s: &str) -> Data {
     }
 
     match state {
-        State::WhitespaceAfterValue | State::ReadValue => state = State::Pair,
+        State::WhitespaceAfterValue | State::ReadValue => state = State::Key,
         State::WhitespaceAfterBracket => state = State::Section,
         State::Init => state = State::Empty,
         _ => {}
     }
 
     let result = match state {
-        State::Pair => Data::Pair(l, r),
-        State::Section => Data::Section(sec),
-        State::Empty => Data::Empty,
-        _ => Data::Error("Incorrect expression".to_owned()),
+        State::Key => Parsed::Key(l, r),
+        State::Section => Parsed::Section(sec),
+        State::Empty => Parsed::Empty,
+        _ => Parsed::Error("Incorrect expression".to_owned()),
     };
     result
 }
@@ -142,16 +142,16 @@ mod test {
 
     #[test]
     fn test_comment() {
-        match parse(";------") {
-            Data::Empty => assert!(true),
+        match parse_line(";------") {
+            Parsed::Empty => assert!(true),
             _ => assert!(false),
         }
     }
 
     #[test]
     fn test_entry() {
-        match parse("name1 = 100 ; comment") {
-            Data::Pair(name, text) => {
+        match parse_line("name1 = 100 ; comment") {
+            Parsed::Key(name, text) => {
                 assert_eq!(name, String::from("name1"));
                 assert_eq!(text, String::from("100"));
             }
@@ -161,8 +161,8 @@ mod test {
 
     #[test]
     fn test_weird_name() {
-        match parse("_.,:(){}-#@&*| = 100") {
-            Data::Pair(name, text) => {
+        match parse_line("_.,:(){}-#@&*| = 100") {
+            Parsed::Key(name, text) => {
                 assert_eq!(name, String::from("_.,:(){}-#@&*|"));
                 assert_eq!(text, String::from("100"));
             }
@@ -172,8 +172,8 @@ mod test {
 
     #[test]
     fn test_text_entry() {
-        match parse("text_name = hello world!") {
-            Data::Pair(name, text) => {
+        match parse_line("text_name = hello world!") {
+            Parsed::Key(name, text) => {
                 assert_eq!(name, String::from("text_name"));
                 assert_eq!(text, String::from("hello world!"));
             }
@@ -183,8 +183,8 @@ mod test {
 
     #[test]
     fn test_incorrect_token() {
-        match parse("[section = 1, 2 = value") {
-            Data::Error(e) => assert!(true),
+        match parse_line("[section = 1, 2 = value") {
+            Parsed::Error(_) => assert!(true),
             _ => assert!(false),
         }
     }

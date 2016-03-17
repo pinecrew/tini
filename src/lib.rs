@@ -2,16 +2,15 @@ mod parser;
 
 use std::path::Path;
 use std::collections::HashMap;
-use std::io::{self, BufReader};
-use std::io::prelude::*;
+use std::io::{BufReader, Read};
 use std::fs::File;
 
-use parser::{parse, Data};
+use parser::{parse_line, Parsed};
 
-type IniData = HashMap<String, HashMap<String, String>>;
+type IniParsed = HashMap<String, HashMap<String, String>>;
 
 #[derive(Debug)]
-pub struct Ini(IniData);
+pub struct Ini(IniParsed);
 
 impl<'a> Ini {
     fn new() -> Ini {
@@ -22,18 +21,18 @@ impl<'a> Ini {
         let mut section_name = String::new();
         let mut entry_list = HashMap::new();
         for (i, line) in string.lines().enumerate() {
-            match parse(&line) {
-                Data::Section(name) => {
+            match parse_line(&line) {
+                Parsed::Section(name) => {
                     if section_name.len() != 0 {
                         result.0.insert(section_name, entry_list.clone());
                         entry_list.clear();
                     }
                     section_name = name;
                 }
-                Data::Pair(name, value) => {
+                Parsed::Key(name, value) => {
                     entry_list.insert(name, value);
                 }
-                Data::Error(msg) => println!("line {}: error: {}", i, msg),
+                Parsed::Error(msg) => println!("line {}: error: {}", i, msg),
                 _ => (),
             };
         }
@@ -48,10 +47,12 @@ impl<'a> Ini {
     pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Ini {
         let file = File::open(path)
                        .ok()
-                       .expect(&format!("Can't open `{}` file!", path.as_ref().display()));
+                       .expect(&format!("Can't open `{}`!", path.as_ref().display()));
         let mut reader = BufReader::new(file);
         let mut buffer = String::new();
-        reader.read_to_string(&mut buffer);
+        let _ = reader.read_to_string(&mut buffer)
+                      .ok()
+                      .expect(&format!("Can't read `{}`!", path.as_ref().display()));
         Ini::from_string(&buffer)
     }
     pub fn from_buffer<S: Into<String>>(buf: S) -> Ini {

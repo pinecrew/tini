@@ -41,7 +41,7 @@
 //! assert_eq!(lost, [4, 8, 15, 16, 23, 42]);
 //! ````
 use std::path::Path;
-use std::collections::{hash_map, HashMap};
+use std::collections::{btree_map, BTreeMap};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::iter::Iterator;
 use std::fs::File;
@@ -49,10 +49,10 @@ use std::str::FromStr;
 use parser::{parse_line, Parsed};
 use std::fmt;
 
-type Section = HashMap<String, String>;
-type IniParsed = HashMap<String, Section>;
-type SectionIter<'a> = hash_map::Iter<'a, String, String>;
-type SectionIterMut<'a> = hash_map::IterMut<'a, String, String>;
+type Section = BTreeMap<String, String>;
+type IniParsed = BTreeMap<String, Section>;
+type SectionIter<'a> = btree_map::Iter<'a, String, String>;
+type SectionIterMut<'a> = btree_map::IterMut<'a, String, String>;
 
 /// Structure for INI-file data
 #[derive(Debug)]
@@ -310,7 +310,7 @@ impl fmt::Display for Ini {
 
 #[doc(hidden)]
 pub struct IniIter<'a> {
-    iter: hash_map::Iter<'a, String, Section>,
+    iter: btree_map::Iter<'a, String, Section>,
 }
 
 impl<'a> Iterator for IniIter<'a> {
@@ -326,7 +326,7 @@ impl<'a> Iterator for IniIter<'a> {
 
 #[doc(hidden)]
 pub struct IniIterMut<'a> {
-    iter: hash_map::IterMut<'a, String, Section>,
+    iter: btree_map::IterMut<'a, String, Section>,
 }
 
 impl<'a> Iterator for IniIterMut<'a> {

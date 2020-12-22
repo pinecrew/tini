@@ -25,10 +25,7 @@ where
     type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Iter {
-            base: &self.base,
-            order_iterator: self.order.iter(),
-        }
+        Iter { base: &self.base, order_iterator: self.order.iter() }
     }
 }
 
@@ -59,11 +56,9 @@ where
     K: Eq + Hash + Clone,
 {
     pub fn new() -> OrderedHashMap<K, V> {
-        OrderedHashMap {
-            base: HashMap::<K, V>::new(),
-            order: Vec::<K>::new(),
-        }
+        OrderedHashMap { base: HashMap::<K, V>::new(), order: Vec::<K>::new() }
     }
+
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
@@ -71,24 +66,26 @@ where
     {
         self.base.get(k)
     }
+
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         if !self.base.contains_key(&k) {
             self.order.push(k.clone());
         }
         self.base.insert(k, v)
     }
+
     pub fn iter(&self) -> Iter<'_, K, V> {
-        Iter {
-            base: &self.base,
-            order_iterator: self.order.iter(),
-        }
+        Iter { base: &self.base, order_iterator: self.order.iter() }
     }
+
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         self.base.iter_mut()
     }
+
     pub fn keys(&self) -> std::slice::Iter<K> {
         self.order.iter()
     }
+
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         if !self.base.contains_key(&key) {
             self.order.push(key.clone());

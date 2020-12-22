@@ -64,6 +64,7 @@ where
             order: Vec::<K>::new(),
         }
     }
+
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
@@ -71,24 +72,46 @@ where
     {
         self.base.get(k)
     }
+
+    pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.base.get_mut(k)
+    }
+
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        // TODO: remove key from self.order
+        self.base.remove(k)
+    }
+    
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         if !self.base.contains_key(&k) {
             self.order.push(k.clone());
         }
         self.base.insert(k, v)
     }
+    
     pub fn iter(&self) -> Iter<'_, K, V> {
         Iter {
             base: &self.base,
             order_iterator: self.order.iter(),
         }
     }
+    
     pub fn iter_mut(&mut self) -> IterMut<'_, K, V> {
         self.base.iter_mut()
     }
+    
     pub fn keys(&self) -> std::slice::Iter<K> {
         self.order.iter()
     }
+    
     pub fn entry(&mut self, key: K) -> Entry<'_, K, V> {
         if !self.base.contains_key(&key) {
             self.order.push(key.clone());

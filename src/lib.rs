@@ -302,6 +302,27 @@ impl Ini {
         })
     }
 
+    // TODO: need tests
+    pub fn delete_section(&mut self, section: &str) -> Option<Ini> {
+        self.data.remove(section).map(|x| {
+            let mut data = IniParsed::new();
+            data.insert(section.to_string(), x);
+            Ini {
+                data,
+                last_section_name: String::new(),
+            }
+        })
+    }
+
+    // TODO: need tests
+    pub fn delete_item(&mut self, section: &str, key: &str) -> Option<String> {
+        if let Some(sec) = self.data.get_mut(section) {
+            sec.remove(key)
+        } else {
+            None
+        }
+    }
+
     /// Iterate over a section by a name
     ///
     /// # Example

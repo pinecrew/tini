@@ -66,10 +66,7 @@ pub struct Ini {
 impl Ini {
     /// Create an empty Ini
     pub fn new() -> Ini {
-        Ini {
-            data: IniParsed::new(),
-            last_section_name: String::new(),
-        }
+        Ini { data: IniParsed::new(), last_section_name: String::new() }
     }
 
     fn from_string(string: &str) -> Ini {
@@ -156,10 +153,7 @@ impl Ini {
     /// assert_eq!(value, Some(10));
     /// ```
     pub fn item<S: Into<String>>(mut self, name: S, value: S) -> Self {
-        self.data
-            .entry(self.last_section_name.clone())
-            .or_insert_with(Section::new)
-            .insert(name.into(), value.into());
+        self.data.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), value.into());
         self
     }
 
@@ -182,15 +176,8 @@ impl Ini {
         S: Into<String>,
         V: fmt::Display,
     {
-        let vector_data = vector
-            .iter()
-            .map(|v| format!("{}", v))
-            .collect::<Vec<_>>()
-            .join(sep);
-        self.data
-            .entry(self.last_section_name.clone())
-            .or_insert_with(Section::new)
-            .insert(name.into(), vector_data);
+        let vector_data = vector.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(sep);
+        self.data.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), vector_data);
         self
     }
 
@@ -294,30 +281,46 @@ impl Ini {
     where
         T: FromStr,
     {
-        self.get_raw(section, key).and_then(|x| {
-            x.split(sep)
-                .map(|s| s.trim().parse())
-                .collect::<Result<Vec<T>, _>>()
-                .ok()
-        })
+        self.get_raw(section, key)
+            .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    // TODO: need tests
-    pub fn delete_section(&mut self, section: &str) -> Option<Ini> {
-        self.data.remove(section).map(|x| {
+    /// Remove section from Ini
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2");
+    /// let section = config.delete_section("one").unwrap();
+    /// assert_eq!(section.get::<u8>("one", "a"), Some(1));
+    /// assert_eq!(config.get::<u8>("one", "a"), None);
+    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
+    /// ```
+    pub fn delete_section<S: Into<String>>(&mut self, section: S) -> Option<Ini> {
+        let section = section.into();
+        self.data.remove(&section).map(|x| {
             let mut data = IniParsed::new();
-            data.insert(section.to_string(), x);
-            Ini {
-                data,
-                last_section_name: String::new(),
-            }
+            data.insert(section, x);
+            Ini { data, last_section_name: String::new() }
         })
     }
 
-    // TODO: need tests
-    pub fn delete_item(&mut self, section: &str, key: &str) -> Option<String> {
-        if let Some(sec) = self.data.get_mut(section) {
-            sec.remove(key)
+    /// Remove item from section
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2");
+    /// let item = config.delete_item("one", "b");
+    /// assert_eq!(item, Some("2".to_string()));
+    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
+    /// assert_eq!(config.get::<u8>("one", "b"), None);
+    /// ```
+    pub fn delete_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
+        let section = section.into();
+        let key = key.into();
+        if let Some(sec) = self.data.get_mut(&section) {
+            sec.remove(&key)
         } else {
             None
         }
@@ -358,9 +361,7 @@ impl Ini {
     ///   }
     /// }
     pub fn iter(&self) -> IniIter {
-        IniIter {
-            iter: self.data.iter(),
-        }
+        IniIter { iter: self.data.iter() }
     }
 
     /// Iterate over all sections, yielding pairs of section name and mutable
@@ -381,9 +382,7 @@ impl Ini {
     ///   }
     /// }
     pub fn iter_mut(&mut self) -> IniIterMut {
-        IniIterMut {
-            iter: self.data.iter_mut(),
-        }
+        IniIterMut { iter: self.data.iter_mut() }
     }
 }
 
@@ -421,9 +420,7 @@ impl<'a> Iterator for IniIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|(string, section)| (string, section.iter()))
+        self.iter.next().map(|(string, section)| (string, section.iter()))
     }
 }
 
@@ -437,9 +434,7 @@ impl<'a> Iterator for IniIterMut<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .next()
-            .map(|(string, section)| (string, section.iter_mut()))
+        self.iter.next().map(|(string, section)| (string, section.iter_mut()))
     }
 }
 
@@ -512,11 +507,7 @@ mod library_test {
 
     #[test]
     fn mutating() {
-        let mut config = Ini::new()
-            .section("items")
-            .item("a", "1")
-            .item("b", "2")
-            .item("c", "3");
+        let mut config = Ini::new().section("items").item("a", "1").item("b", "2").item("c", "3");
 
         // mutate items
         for (_, item) in config.iter_mut() {
@@ -537,11 +528,7 @@ mod library_test {
 
     #[test]
     fn redefine_item() {
-        let config = Ini::new()
-            .section("items")
-            .item("one", "3")
-            .item("two", "2")
-            .item("one", "1");
+        let config = Ini::new().section("items").item("one", "3").item("two", "2").item("one", "1");
 
         let one: Option<i32> = config.get("items", "one");
         assert_eq!(one, Some(1));
@@ -549,13 +536,8 @@ mod library_test {
 
     #[test]
     fn redefine_section() {
-        let config = Ini::new()
-            .section("one")
-            .item("a", "1")
-            .section("two")
-            .item("b", "2")
-            .section("one")
-            .item("c", "3");
+        let config =
+            Ini::new().section("one").item("a", "1").section("two").item("b", "2").section("one").item("c", "3");
 
         let a_val: Option<i32> = config.get("one", "a");
         let c_val: Option<i32> = config.get("one", "c");
@@ -566,9 +548,7 @@ mod library_test {
 
     #[test]
     fn with_escaped_items() {
-        let config = Ini::new()
-            .section("default")
-            .item("vector", r"1, 2, 3, 4, 5, 6, 7");
+        let config = Ini::new().section("default").item("vector", r"1, 2, 3, 4, 5, 6, 7");
 
         let vector: Vec<String> = config.get_vec("default", "vector").unwrap();
         assert_eq!(vector, ["1", "2", "3", "4", "5", "6", "7"]);
@@ -576,12 +556,32 @@ mod library_test {
 
     #[test]
     fn use_item_vec() {
-        let config =
-            Ini::new()
-                .section("default")
-                .item_vec_with_sep("a", &["a,b", "c,d", "e"], "|");
+        let config = Ini::new().section("default").item_vec_with_sep("a", &["a,b", "c,d", "e"], "|");
 
         let v: Vec<String> = config.get_vec_with_sep("default", "a", "|").unwrap();
         assert_eq!(v, [r"a,b", "c,d", "e"]);
+    }
+
+    #[test]
+    fn delete_section() {
+        let mut config = Ini::new().section("one").item("a", "1").section("two").item("b", "2");
+        let section = match config.delete_section("one") {
+            Some(value) => value,
+            None => panic!("section not found"),
+        };
+
+        assert_eq!(section.get::<u8>("one", "a"), Some(1));
+        assert_eq!(config.get::<u8>("one", "a"), None);
+        assert_eq!(config.get::<u8>("two", "b"), Some(2));
+    }
+
+    #[test]
+    fn delete_item() {
+        let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
+        let item = config.delete_item("one", "a");
+
+        assert_eq!(item, Some("1".to_string()));
+        assert_eq!(config.get::<u8>("one", "a"), None);
+        assert_eq!(config.get::<u8>("one", "b"), Some(2));
     }
 }

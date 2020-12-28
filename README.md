@@ -66,4 +66,4 @@ fn main() {
 }
 ```
 
-See more in [examples](./examples) folder or in [documentation](http://pinecrew.github.io/tini/tini/).
+See more in [examples](./examples) folder or in [documentation](https://docs.rs/tini).

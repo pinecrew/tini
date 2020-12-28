@@ -292,17 +292,13 @@ impl Ini {
     /// # use tini::Ini;
     /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2");
     /// let section = config.delete_section("one").unwrap();
-    /// assert_eq!(section.get::<u8>("one", "a"), Some(1));
+    /// assert_eq!(section.get("a"), Some(&"1".to_string()));
     /// assert_eq!(config.get::<u8>("one", "a"), None);
     /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
     /// ```
-    pub fn delete_section<S: Into<String>>(&mut self, section: S) -> Option<Ini> {
+    pub fn delete_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
         let section = section.into();
-        self.data.remove(&section).map(|x| {
-            let mut data = IniParsed::new();
-            data.insert(section, x);
-            Ini { data, last_section_name: String::new() }
-        })
+        self.data.remove(&section)
     }
 
     /// Remove item from section
@@ -570,7 +566,7 @@ mod library_test {
             None => panic!("section not found"),
         };
 
-        assert_eq!(section.get::<u8>("one", "a"), Some(1));
+        assert_eq!(section.get("a"), Some(&"1".to_string()));
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("two", "b"), Some(2));
     }

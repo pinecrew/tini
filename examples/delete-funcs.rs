@@ -14,8 +14,8 @@ fn main() {
 
     println!("before delete:\n-----\n{}\n-----", config.to_buffer());
 
-    config.delete_section("values");
-    config.delete_item("items", "c");
+    config.remove_section("values");
+    config.remove_item("items", "c");
 
     println!(" after delete:\n-----\n{}\n-----", config.to_buffer());
 }

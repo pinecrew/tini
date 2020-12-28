@@ -291,12 +291,12 @@ impl Ini {
     /// ```
     /// # use tini::Ini;
     /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2");
-    /// let section = config.delete_section("one").unwrap();
+    /// let section = config.remove_section("one").unwrap();
     /// assert_eq!(section.get("a"), Some(&"1".to_string()));
     /// assert_eq!(config.get::<u8>("one", "a"), None);
     /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
     /// ```
-    pub fn delete_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
+    pub fn remove_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
         let section = section.into();
         self.data.remove(&section)
     }
@@ -307,12 +307,12 @@ impl Ini {
     /// ```
     /// # use tini::Ini;
     /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2");
-    /// let item = config.delete_item("one", "b");
+    /// let item = config.remove_item("one", "b");
     /// assert_eq!(item, Some("2".to_string()));
     /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
     /// assert_eq!(config.get::<u8>("one", "b"), None);
     /// ```
-    pub fn delete_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
+    pub fn remove_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
         let section = section.into();
         let key = key.into();
         if let Some(sec) = self.data.get_mut(&section) {
@@ -559,9 +559,9 @@ mod library_test {
     }
 
     #[test]
-    fn delete_section() {
+    fn remove_section() {
         let mut config = Ini::new().section("one").item("a", "1").section("two").item("b", "2");
-        let section = match config.delete_section("one") {
+        let section = match config.remove_section("one") {
             Some(value) => value,
             None => panic!("section not found"),
         };
@@ -572,9 +572,9 @@ mod library_test {
     }
 
     #[test]
-    fn delete_item() {
+    fn remove_item() {
         let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
-        let item = config.delete_item("one", "a");
+        let item = config.remove_item("one", "a");
 
         assert_eq!(item, Some("1".to_string()));
         assert_eq!(config.get::<u8>("one", "a"), None);

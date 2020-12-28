@@ -38,7 +38,7 @@
 //! assert_eq!(consts, [3.1416, 2.7183]);
 //! assert_eq!(lost, [4, 8, 15, 16, 23, 42]);
 //! ````
-mod ordered_hashmap;
+pub mod ordered_hashmap;
 mod parser;
 
 use ordered_hashmap::OrderedHashMap;
@@ -50,7 +50,7 @@ use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
 
-type Section = OrderedHashMap<String, String>;
+pub type Section = OrderedHashMap<String, String>;
 type IniParsed = OrderedHashMap<String, Section>;
 type SectionIter<'a> = ordered_hashmap::Iter<'a, String, String>;
 type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
@@ -228,7 +228,7 @@ impl Ini {
     /// assert_eq!(value, "[section]\none = 1");
     /// ```
     pub fn to_buffer(&self) -> String {
-        format!("{}", self)
+        self.to_string()
     }
 
     fn get_raw(&self, section: &str, key: &str) -> Option<&String> {
@@ -283,6 +283,24 @@ impl Ini {
     {
         self.get_raw(section, key)
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
+    }
+
+    /// Insert [Section](Section) to end of [Ini](Ini).
+    /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2");
+    /// let mut section = conf.remove_section("a").unwrap();
+    /// section.insert("c".to_string(), "4".to_string());
+    /// conf.insert_section("mod_a", section);
+    /// assert_eq!(conf.get::<u8>("a", "a"), None);
+    /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));
+    /// ```
+    pub fn insert_section<S: Into<String>>(&mut self, key: S, section: Section) {
+        self.last_section_name = key.into();
+        self.data.insert(self.last_section_name.clone(), section);
     }
 
     /// Remove section from Ini

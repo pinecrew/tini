@@ -6,11 +6,13 @@ use std::iter::IntoIterator;
 
 #[derive(Debug)]
 pub struct OrderedHashMap<K, V> {
+    #[doc(hidden)]
     base: HashMap<K, V>,
     order: Vec<K>,
 }
 
 pub struct Iter<'a, K, V> {
+    #[doc(hidden)]
     base: &'a HashMap<K, V>,
     order_iterator: std::slice::Iter<'a, K>,
 }

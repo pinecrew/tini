@@ -2,8 +2,8 @@
 
 ![Rust](https://github.com/pinecrew/tini/workflows/Rust/badge.svg)
 [![Crates](https://img.shields.io/crates/v/tini.svg)](https://crates.io/crates/tini)
-
-| [Documentation](https://docs.rs/tini) | [Examples](./examples) |
+[![Docs](https://docs.rs/tini/badge.svg)](https://docs.rs/tini)
+[![Examples](https://img.shields.io/badge/examples-latest-yellow)](./examples)
 
 ## Usage
 

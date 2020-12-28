@@ -59,12 +59,30 @@ where
         OrderedHashMap { base: HashMap::<K, V>::new(), order: Vec::<K>::new() }
     }
 
-    pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
+    pub fn get<Q>(&self, k: &Q) -> Option<&V>
     where
         K: Borrow<Q>,
-        Q: Hash + Eq,
+        Q: ?Sized + Hash + Eq,
     {
         self.base.get(k)
+    }
+
+    pub fn get_mut<Q>(&mut self, k: &Q) -> Option<&mut V>
+    where
+        K: Borrow<Q>,
+        Q: ?Sized + Hash + Eq,
+    {
+        self.base.get_mut(k)
+    }
+
+    pub fn remove(&mut self, k: &K) -> Option<V> {
+        match self.order.iter().position(|x| x == k) {
+            Some(index) => {
+                self.order.swap_remove(index);
+                self.base.remove(k)
+            }
+            None => None,
+        }
     }
 
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {

@@ -314,6 +314,43 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
+    /// Remove section from Ini
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2");
+    /// let section = config.remove_section("one").unwrap();
+    /// assert_eq!(section.get("a"), Some(&"1".to_string()));
+    /// assert_eq!(config.get::<u8>("one", "a"), None);
+    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
+    /// ```
+    pub fn remove_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
+        let section = section.into();
+        self.data.remove(&section)
+    }
+
+    /// Remove item from section
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2");
+    /// let item = config.remove_item("one", "b");
+    /// assert_eq!(item, Some("2".to_string()));
+    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
+    /// assert_eq!(config.get::<u8>("one", "b"), None);
+    /// ```
+    pub fn remove_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
+        let section = section.into();
+        let key = key.into();
+        if let Some(sec) = self.data.get_mut(&section) {
+            sec.remove(&key)
+        } else {
+            None
+        }
+    }
+
     /// Iterate over a section by a name
     ///
     /// # Example
@@ -548,5 +585,28 @@ mod library_test {
 
         let v: Vec<String> = config.get_vec_with_sep("default", "a", "|").unwrap();
         assert_eq!(v, [r"a,b", "c,d", "e"]);
+    }
+
+    #[test]
+    fn remove_section() {
+        let mut config = Ini::new().section("one").item("a", "1").section("two").item("b", "2");
+        let section = match config.remove_section("one") {
+            Some(value) => value,
+            None => panic!("section not found"),
+        };
+
+        assert_eq!(section.get("a"), Some(&"1".to_string()));
+        assert_eq!(config.get::<u8>("one", "a"), None);
+        assert_eq!(config.get::<u8>("two", "b"), Some(2));
+    }
+
+    #[test]
+    fn remove_item() {
+        let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
+        let item = config.remove_item("one", "a");
+
+        assert_eq!(item, Some("1".to_string()));
+        assert_eq!(config.get::<u8>("one", "a"), None);
+        assert_eq!(config.get::<u8>("one", "b"), Some(2));
     }
 }

@@ -20,7 +20,7 @@ fn main() {
     println!(" after delete:\n-----\n{}\n-----\n", config);
 
     section.insert(String::from("g"), String::from("42"));
-    config.insert_section("vals", section);
+    config.insert_section("vals", &section);
 
     println!(" after insert:\n-----\n{}\n-----", config);
 }

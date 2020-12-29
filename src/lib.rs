@@ -291,16 +291,31 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
+    /// use std::collections::HashMap;
     /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2");
     /// let mut section = conf.remove_section("a").unwrap();
     /// section.insert("c".to_string(), "4".to_string());
-    /// conf.insert_section("mod_a", section);
+    /// conf.insert_section("mod_a", &section);
+    /// let mut numbers = HashMap::new();
+    /// numbers.insert("pi".to_string(), "3.141593".to_string());
+    /// numbers.insert("e".to_string(), "2.718281828".to_string());
+    /// conf.insert_section("numbers", &numbers);
     /// assert_eq!(conf.get::<u8>("a", "a"), None);
     /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));
+    /// assert_eq!(conf.get::<String>("numbers", "pi"), Some("3.141593".to_string()));
+    /// assert_eq!(conf.get::<String>("numbers", "e"), Some("2.718281828".to_string()));
     /// ```
-    pub fn insert_section<S: Into<String>>(&mut self, key: S, section: Section) {
+    pub fn insert_section<'a, K, S>(&mut self, key: K, section: S)
+    where
+        K: Into<String>,
+        S: IntoIterator<Item = (&'a String, &'a String)>,
+    {
         self.last_section_name = key.into();
-        self.data.insert(self.last_section_name.clone(), section);
+        let mut new_section = OrderedHashMap::new();
+        for (k, v) in section.into_iter() {
+            new_section.insert(k.clone(), v.clone());
+        }
+        self.data.insert(self.last_section_name.clone(), new_section);
     }
 
     /// Remove section from Ini

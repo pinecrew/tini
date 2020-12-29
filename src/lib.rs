@@ -298,8 +298,8 @@ impl Ini {
     /// section.insert("c".to_string(), "4".to_string());
     /// conf.insert_section("mod_a", &section);
     /// let mut numbers = HashMap::new();
-    /// numbers.insert("pi".to_string(), 3.141593);
-    /// numbers.insert("e".to_string(), 2.718281828);
+    /// numbers.insert("pi", 3.141593);
+    /// numbers.insert("e", 2.718281828);
     /// conf.insert_section("numbers", &numbers);
     /// assert_eq!(conf.get::<u8>("a", "a"), None);
     /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));

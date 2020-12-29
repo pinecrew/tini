@@ -5,11 +5,11 @@
 //! Features:
 //!
 //! * no dependencies;
-//! * parsing [from file](struct.Ini.html#method.from_file) and [from buffer](struct.Ini.html#method.from_buffer);
-//! * [convert parsed value to given type](struct.Ini.html#method.get);
-//! * [parse comma-separated lists to vectors](struct.Ini.html#method.get_vec);
-//! * construct new ini-structure with [method chaining](struct.Ini.html#method.item);
-//! * writing [to file](struct.Ini.html#method.to_file) and [to buffer](struct.Ini.html#method.to_buffer).
+//! * parsing [from file](Ini::from_file), [from reader](Ini::from_reader) and [from buffer](Ini::from_buffer);
+//! * [convert parsed value to given type](Ini::get);
+//! * [parse comma-separated lists to vectors](Ini::get_vec);
+//! * construct new ini-structure with [method chaining](Ini::item);
+//! * writing [to file](Ini::to_file), [to writer](Ini::to_writer) and [to buffer](Ini::to_buffer).
 //!
 //! # Examples
 //! ## Read from buffer and get string values
@@ -86,7 +86,7 @@ impl Ini {
     /// Construct Ini from file
     ///
     /// # Errors
-    /// Errors returned by `File::open()` and `BufReader::read_to_string()`
+    /// Errors returned by [File::open](File::open) and [BufReader::read_to_string](BufReader::read_to_string)
     ///
     ///
     /// # Examples
@@ -110,6 +110,27 @@ impl Ini {
     pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, io::Error> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
+        Ini::from_reader(&mut reader)
+    }
+
+    /// Construct Ini from any struct who implement [Read](std::io::Read) trait
+    ///
+    /// # Errors
+    /// Errors returned by [Read::read_to_string](Read::read_to_string)
+    ///
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use std::io::BufReader;
+    /// # use std::fs::File;
+    /// # use tini::Ini;
+    /// let f = File::open("./examples/example.ini").unwrap();
+    /// let mut reader = BufReader::new(f);
+    /// let conf = Ini::from_reader(&mut reader);
+    /// assert!(conf.ok().is_some());
+    /// ```
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, io::Error> {
         let mut buffer = String::new();
         reader.read_to_string(&mut buffer)?;
         Ok(Ini::from_string(&buffer))
@@ -128,7 +149,7 @@ impl Ini {
         Ini::from_string(&buf.into())
     }
 
-    /// Set section name for following [`item()`](#method.item)s. This function doesn't create a
+    /// Set section name for following [`item()`](Ini::item)s. This function doesn't create a
     /// section.
     ///
     /// # Example
@@ -204,13 +225,21 @@ impl Ini {
         self.item_vec_with_sep(name, vector, ", ")
     }
 
-    /// Write Ini to file. This function is similar to `from_file` in use.
+    /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
     /// # Errors
-    /// Errors returned by `File::create()` and `BufWriter::write_all()`
+    /// Errors returned by [File::create](File::create) and [Write::write_all](Write::write_all)
     ///
     pub fn to_file<S: AsRef<Path> + ?Sized>(&self, path: &S) -> Result<(), io::Error> {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
+        self.to_writer(&mut writer)
+    }
+
+    /// Writer Ini to any struct who implement Write trait
+    /// # Errors
+    /// Errors returned by [Write::write_all](Write::write_all)
+    ///
+    pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         writer.write_all(self.to_buffer().as_bytes())?;
         Ok(())
     }
@@ -251,7 +280,7 @@ impl Ini {
 
     /// Get vector value of key in section
     ///
-    /// The function returns `None` if one of the elements can not be parsed.
+    /// The function returns [None](Option::None) if one of the elements can not be parsed.
     ///
     /// # Example
     /// ```
@@ -269,7 +298,7 @@ impl Ini {
 
     /// Get vector value of key in section separeted by sep string
     ///
-    /// The function returns `None` if one of the elements can not be parsed.
+    /// The function returns [None](Option::None) if one of the elements can not be parsed.
     ///
     /// # Example
     /// ```

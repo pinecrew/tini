@@ -23,7 +23,7 @@ fn main() {
     // update removed section
     section.insert(String::from("g"), String::from("42"));
     // and add with different name
-    config.insert_section("vals", &section);
+    config.insert_section("vals", section);
 
     // create custom section using HashMap
     let mut section = HashMap::new();

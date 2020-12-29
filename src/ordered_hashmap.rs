@@ -17,6 +17,12 @@ pub struct Iter<'a, K, V> {
     order_iterator: std::slice::Iter<'a, K>,
 }
 
+pub struct IntoIter<K, V> {
+    #[doc(hidden)]
+    base: HashMap<K, V>,
+    order_iterator: std::vec::IntoIter<K>,
+}
+
 pub type IterMut<'a, K, V> = hash_map::IterMut<'a, K, V>;
 
 impl<'a, K, V> IntoIterator for &'a OrderedHashMap<K, V>
@@ -31,6 +37,18 @@ where
     }
 }
 
+impl<K, V> IntoIterator for OrderedHashMap<K, V>
+where
+    K: Eq + Hash,
+{
+    type Item = (K, V);
+    type IntoIter = IntoIter<K, V>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        IntoIter { base: self.base, order_iterator: self.order.into_iter() }
+    }
+}
+
 impl<'a, K, V> Iterator for Iter<'a, K, V>
 where
     K: Eq + Hash,
@@ -39,6 +57,21 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         match self.order_iterator.next() {
             Some(k) => self.base.get_key_value(&k),
+            None => None,
+        }
+    }
+}
+
+impl<K, V> Iterator for IntoIter<K, V>
+where
+    K: Eq + Hash
+{
+    type Item = (K, V);
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.order_iterator.next() {
+            Some(k) => {
+              self.base.remove_entry(&k)
+            },
             None => None,
         }
     }

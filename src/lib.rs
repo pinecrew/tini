@@ -38,9 +38,10 @@
 //! assert_eq!(consts, [3.1416, 2.7183]);
 //! assert_eq!(lost, [4, 8, 15, 16, 23, 42]);
 //! ````
-pub mod ordered_hashmap;
+mod ordered_hashmap;
 mod parser;
 
+use std::hash::Hash;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;
@@ -50,7 +51,7 @@ use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
 
-pub type Section = OrderedHashMap<String, String>;
+type Section = OrderedHashMap<String, String>;
 type IniParsed = OrderedHashMap<String, Section>;
 type SectionIter<'a> = ordered_hashmap::Iter<'a, String, String>;
 type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
@@ -297,23 +298,25 @@ impl Ini {
     /// section.insert("c".to_string(), "4".to_string());
     /// conf.insert_section("mod_a", &section);
     /// let mut numbers = HashMap::new();
-    /// numbers.insert("pi".to_string(), "3.141593".to_string());
-    /// numbers.insert("e".to_string(), "2.718281828".to_string());
+    /// numbers.insert("pi".to_string(), 3.141593);
+    /// numbers.insert("e".to_string(), 2.718281828);
     /// conf.insert_section("numbers", &numbers);
     /// assert_eq!(conf.get::<u8>("a", "a"), None);
     /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));
     /// assert_eq!(conf.get::<String>("numbers", "pi"), Some("3.141593".to_string()));
     /// assert_eq!(conf.get::<String>("numbers", "e"), Some("2.718281828".to_string()));
     /// ```
-    pub fn insert_section<'a, K, S>(&mut self, key: K, section: S)
+    pub fn insert_section<K, V, I, S>(&mut self, key: I, section: S)
     where
-        K: Into<String>,
-        S: IntoIterator<Item = (&'a String, &'a String)>,
+        K: fmt::Display + Eq + Hash,
+        V: fmt::Display,
+        I: Into<String>,
+        S: IntoIterator<Item = (K, V)>,
     {
         self.last_section_name = key.into();
         let mut new_section = OrderedHashMap::new();
         for (k, v) in section.into_iter() {
-            new_section.insert(k.clone(), v.clone());
+            new_section.insert(k.to_string(), v.to_string());
         }
         self.data.insert(self.last_section_name.clone(), new_section);
     }

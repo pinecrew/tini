@@ -1,4 +1,5 @@
 extern crate tini;
+use std::collections::HashMap;
 use tini::Ini;
 
 fn main() {
@@ -19,8 +20,16 @@ fn main() {
 
     println!(" after delete:\n-----\n{}\n-----\n", config);
 
+    // update removed section
     section.insert(String::from("g"), String::from("42"));
+    // and add with different name
     config.insert_section("vals", &section);
+
+    // create custom section using HashMap
+    let mut section = HashMap::new();
+    section.insert("val", 42);
+    // and add
+    config.insert_section("hashmap", section);
 
     println!(" after insert:\n-----\n{}\n-----", config);
 }

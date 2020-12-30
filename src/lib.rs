@@ -41,18 +41,18 @@
 mod ordered_hashmap;
 mod parser;
 
-use std::hash::Hash;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;
 use std::fs::File;
+use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
 
 type Section = OrderedHashMap<String, String>;
-type IniParsed = OrderedHashMap<String, Section>;
+type Document = OrderedHashMap<String, Section>;
 type SectionIter<'a> = ordered_hashmap::Iter<'a, String, String>;
 type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
 
@@ -60,14 +60,14 @@ type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
 #[derive(Debug)]
 pub struct Ini {
     #[doc(hidden)]
-    data: IniParsed,
+    document: Document,
     last_section_name: String,
 }
 
 impl Ini {
     /// Create an empty Ini
     pub fn new() -> Ini {
-        Ini { data: IniParsed::new(), last_section_name: String::new() }
+        Ini { document: Document::new(), last_section_name: String::new() }
     }
 
     fn from_string(string: &str) -> Ini {
@@ -175,7 +175,10 @@ impl Ini {
     /// assert_eq!(value, Some(10));
     /// ```
     pub fn item<S: Into<String>>(mut self, name: S, value: S) -> Self {
-        self.data.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), value.into());
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), value.into());
         self
     }
 
@@ -199,7 +202,10 @@ impl Ini {
         V: fmt::Display,
     {
         let vector_data = vector.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(sep);
-        self.data.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), vector_data);
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), vector_data);
         self
     }
 
@@ -262,7 +268,7 @@ impl Ini {
     }
 
     fn get_raw(&self, section: &str, key: &str) -> Option<&String> {
-        self.data.get(section).and_then(|x| x.get(key))
+        self.document.get(section).and_then(|x| x.get(key))
     }
 
     /// Get scalar value of key in section
@@ -347,7 +353,7 @@ impl Ini {
         for (k, v) in section.into_iter() {
             new_section.insert(k.to_string(), v.to_string());
         }
-        self.data.insert(self.last_section_name.clone(), new_section);
+        self.document.insert(self.last_section_name.clone(), new_section);
     }
 
     /// Remove section from Ini
@@ -363,7 +369,7 @@ impl Ini {
     /// ```
     pub fn remove_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
         let section = section.into();
-        self.data.remove(&section)
+        self.document.remove(&section)
     }
 
     /// Remove item from section
@@ -380,7 +386,7 @@ impl Ini {
     pub fn remove_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
         let section = section.into();
         let key = key.into();
-        if let Some(sec) = self.data.get_mut(&section) {
+        if let Some(sec) = self.document.get_mut(&section) {
             sec.remove(&key)
         } else {
             None
@@ -401,7 +407,7 @@ impl Ini {
     /// }
     /// ```
     pub fn iter_section(&self, section: &str) -> Option<SectionIter> {
-        self.data.get(section).map(|value| value.iter())
+        self.document.get(section).map(|value| value.iter())
     }
 
     /// Iterate over all sections, yielding pairs of section name and iterator
@@ -422,7 +428,7 @@ impl Ini {
     ///   }
     /// }
     pub fn iter(&self) -> IniIter {
-        IniIter { iter: self.data.iter() }
+        IniIter { iter: self.document.iter() }
     }
 
     /// Iterate over all sections, yielding pairs of section name and mutable
@@ -443,7 +449,7 @@ impl Ini {
     ///   }
     /// }
     pub fn iter_mut(&mut self) -> IniIterMut {
-        IniIterMut { iter: self.data.iter_mut() }
+        IniIterMut { iter: self.document.iter_mut() }
     }
 }
 
@@ -555,14 +561,14 @@ mod library_test {
     #[test]
     fn ordering_iter() {
         let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3");
-        let keys: Vec<&String> = ini.data.get("a").unwrap().iter().map(|(k, _)| k).collect();
+        let keys: Vec<&String> = ini.document.get("a").unwrap().iter().map(|(k, _)| k).collect();
         assert_eq!(["c", "b", "a"], keys[..]);
     }
 
     #[test]
     fn ordering_keys() {
         let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3");
-        let keys: Vec<&String> = ini.data.get("a").unwrap().keys().collect();
+        let keys: Vec<&String> = ini.document.get("a").unwrap().keys().collect();
         assert_eq!(["c", "b", "a"], keys[..]);
     }
 

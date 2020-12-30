@@ -85,9 +85,11 @@ impl Ini {
 
     /// Construct Ini from file
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Errors
     /// Errors returned by [File::open](File::open) and [BufReader::read_to_string](BufReader::read_to_string)
-    ///
     ///
     /// # Examples
     /// You may use Path
@@ -115,6 +117,9 @@ impl Ini {
 
     /// Construct Ini from any struct who implement [Read](std::io::Read) trait
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Errors
     /// Errors returned by [Read::read_to_string](Read::read_to_string)
     ///
@@ -138,6 +143,9 @@ impl Ini {
 
     /// Construct Ini from buffer
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -149,8 +157,10 @@ impl Ini {
         Ini::from_string(&buf.into())
     }
 
-    /// Set section name for following [`item()`](Ini::item)s. This function doesn't create a
-    /// section.
+    /// Set section name for following [`item()`](Ini::item)s. This function doesn't create a section.
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -164,6 +174,9 @@ impl Ini {
     }
 
     /// Add key-value pair to last section
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -183,6 +196,9 @@ impl Ini {
     }
 
     /// Add key-vector pair to last section separated by sep string
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -211,6 +227,9 @@ impl Ini {
 
     /// Add key-vector pair to last section
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -232,6 +251,10 @@ impl Ini {
     }
 
     /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
+    ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Errors
     /// Errors returned by [File::create](File::create) and [Write::write_all](Write::write_all)
     ///
@@ -242,6 +265,13 @@ impl Ini {
     }
 
     /// Writer Ini to any struct who implement Write trait
+    ///
+    /// # Arguments
+    /// `todo`
+    ///
+    /// # Example
+    /// `todo`
+    ///
     /// # Errors
     /// Errors returned by [Write::write_all](Write::write_all)
     ///
@@ -251,6 +281,9 @@ impl Ini {
     }
 
     /// Write Ini to buffer
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -273,6 +306,9 @@ impl Ini {
 
     /// Get scalar value of key in section
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -287,6 +323,9 @@ impl Ini {
     /// Get vector value of key in section
     ///
     /// The function returns [None](Option::None) if one of the elements can not be parsed.
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -306,6 +345,9 @@ impl Ini {
     ///
     /// The function returns [None](Option::None) if one of the elements can not be parsed.
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -321,8 +363,12 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// Insert [Section](Section) to end of [Ini](Ini).
+    /// Insert `Section` or any other object who support [IntoIterator](IntoIterator) to end of [Ini](Ini).
+    ///
     /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
+    ///
+    /// # Arguments
+    /// todo
     ///
     /// # Example
     /// ```
@@ -358,6 +404,9 @@ impl Ini {
 
     /// Remove section from Ini
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -373,6 +422,9 @@ impl Ini {
     }
 
     /// Remove item from section
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -395,6 +447,9 @@ impl Ini {
 
     /// Iterate over a section by a name
     ///
+    /// # Arguments
+    /// `todo`
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -413,6 +468,9 @@ impl Ini {
     /// Iterate over all sections, yielding pairs of section name and iterator
     /// over the section elements. The concrete iterator element type is
     /// `(&'a String, ordered_hashmap::Iter<'a, String, String>)`.
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```
@@ -434,6 +492,9 @@ impl Ini {
     /// Iterate over all sections, yielding pairs of section name and mutable
     /// iterator over the section elements. The concrete iterator element type is
     /// `(&'a String, ordered_hashmap::IterMut<'a, String, String>)`.
+    ///
+    /// # Arguments
+    /// `todo`
     ///
     /// # Example
     /// ```

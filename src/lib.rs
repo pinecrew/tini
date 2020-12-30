@@ -41,11 +41,11 @@
 mod ordered_hashmap;
 mod parser;
 
-use std::hash::Hash;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;
 use std::fs::File;
+use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::iter::Iterator;
 use std::path::Path;
@@ -175,7 +175,10 @@ impl Ini {
     /// assert_eq!(value, Some(10));
     /// ```
     pub fn item<S: Into<String>>(mut self, name: S, value: S) -> Self {
-        self.document.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), value.into());
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), value.into());
         self
     }
 
@@ -199,7 +202,10 @@ impl Ini {
         V: fmt::Display,
     {
         let vector_data = vector.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(sep);
-        self.document.entry(self.last_section_name.clone()).or_insert_with(Section::new).insert(name.into(), vector_data);
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), vector_data);
         self
     }
 

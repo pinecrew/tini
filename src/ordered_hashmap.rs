@@ -64,14 +64,12 @@ where
 
 impl<K, V> Iterator for IntoIter<K, V>
 where
-    K: Eq + Hash
+    K: Eq + Hash,
 {
     type Item = (K, V);
     fn next(&mut self) -> Option<Self::Item> {
         match self.order_iterator.next() {
-            Some(k) => {
-              self.base.remove_entry(&k)
-            },
+            Some(k) => self.base.remove_entry(&k),
             None => None,
         }
     }

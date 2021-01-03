@@ -314,7 +314,6 @@ where
 /// Note that it iterates in arbitrary order.
 pub type IterMut<'a, K, V> = hash_map::IterMut<'a, K, V>;
 
-
 #[cfg(test)]
 mod library_test {
     use super::*;

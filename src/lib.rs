@@ -156,7 +156,7 @@ impl Ini {
     }
 
     /// Set section name for following [`item()`](Ini::item)s.
-    /// 
+    ///
     /// # Warning
     /// This function doesn't create a section.
     ///
@@ -202,7 +202,7 @@ impl Ini {
     ///
     /// - `name` must support [Into] to [String]
     /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
-    /// - `sep` arbitrary string delimiter 
+    /// - `sep` arbitrary string delimiter
     ///
     /// # Example
     /// ```
@@ -397,7 +397,7 @@ impl Ini {
     /// ```
     /// # use tini::Ini;
     /// use std::collections::HashMap;
-    /// 
+    ///
     /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2");
     ///
     /// // remove section from `conf`

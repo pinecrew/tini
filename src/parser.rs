@@ -1,9 +1,20 @@
+use std::error;
+use std::fmt;
+
 #[derive(Debug)]
 pub enum Parsed {
-    Error(String),
+    Error(ParseError),
     Empty,
     Section(String),
     Value(String, String), /* Vector(String, Vec<String>), impossible, because OrderedHashMap field has type String, not Vec */
+}
+
+#[derive(Debug)]
+pub enum ParseError {
+    IncorrectSection,
+    IncorrectSyntax,
+    NoneKey,
+    EmptyKey,
 }
 
 pub fn parse_line(line: &str) -> Parsed {
@@ -20,14 +31,14 @@ pub fn parse_line(line: &str) -> Parsed {
             let section_name = content.trim_matches(|c| c == '[' || c == ']').to_owned();
             return Parsed::Section(section_name);
         } else {
-            return Parsed::Error("incorrect section syntax".to_owned());
+            return Parsed::Error(ParseError::IncorrectSection);
         }
     } else if content.contains('=') {
         let mut pair = content.splitn(2, '=').map(|s| s.trim());
         // if key is None => error
         let key = match pair.next() {
             Some(value) => value.to_owned(),
-            None => return Parsed::Error("key is None".to_owned()),
+            None => return Parsed::Error(ParseError::NoneKey)
         };
         // if value is None => empty string
         let value = match pair.next() {
@@ -35,11 +46,24 @@ pub fn parse_line(line: &str) -> Parsed {
             None => "".to_owned(),
         };
         if key.is_empty() {
-            return Parsed::Error("empty key".to_owned());
+            return Parsed::Error(ParseError::EmptyKey);
         }
         return Parsed::Value(key, value);
     }
-    Parsed::Error("incorrect syntax".to_owned())
+    return Parsed::Error(ParseError::IncorrectSyntax)
+}
+
+impl error::Error for ParseError {}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ParseError::IncorrectSection => write!(f, "Incorrect section syntax"),
+            ParseError::IncorrectSyntax => write!(f, "Incorrect syntax"),
+            ParseError::NoneKey => write!(f, "Key is None"),
+            ParseError::EmptyKey => write!(f, "Key is empty"),
+        }
+    }
 }
 
 #[cfg(test)]

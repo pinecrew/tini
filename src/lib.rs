@@ -76,7 +76,7 @@ impl Ini {
             match parse_line(&line) {
                 Parsed::Section(name) => result = result.section(name),
                 Parsed::Value(name, value) => result = result.item(name, value),
-                Parsed::Error(msg) => println!("line {}: error: {}", i, msg),
+                Parsed::Error(msg) => eprintln!("error at line {}: {}", i, msg),
                 _ => (),
             };
         }

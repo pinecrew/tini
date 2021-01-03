@@ -249,6 +249,17 @@ where
     }
 }
 
+/// An iterator over the entries of a `OrderedHashMap`.
+///
+/// This `struct` is created by the `iter` method on `OrderedHashMap`.
+///
+/// # Example
+///
+/// ```ignore
+/// let mut map = OrderedHashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.iter();
+/// ```
 pub struct Iter<'a, K, V> {
     #[doc(hidden)]
     base: &'a HashMap<K, V>,
@@ -268,6 +279,18 @@ where
     }
 }
 
+/// An owning iterator over the entries of a `OrderedHashMap`.
+///
+/// This `struct` is created by the `into_iter` method on `OrderedHashMap`
+/// (provided by the `IntoIterator` trait)
+///
+/// # Example
+///
+/// ```ignore
+/// let mut map = OrderedHashMap::new();
+/// map.insert("a", 1);
+/// let iter = map.into_iter();
+/// ```
 pub struct IntoIter<K, V> {
     #[doc(hidden)]
     base: HashMap<K, V>,
@@ -287,7 +310,10 @@ where
     }
 }
 
+/// A mutable iterator over the entries of a `OrderedHashMap`.
+/// Note that it iterates in arbitrary order.
 pub type IterMut<'a, K, V> = hash_map::IterMut<'a, K, V>;
+
 
 #[cfg(test)]
 mod library_test {

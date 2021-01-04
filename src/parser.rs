@@ -1,11 +1,22 @@
+//! Parser module
+//!
+//! Contains `parse_line` routine to parse single line of ini file
+//! and `Parsed` enum for parsing result
+
+/// Enum for storing one of 4 possible `parse_line` results
 #[derive(Debug)]
 pub enum Parsed {
+    // parse error
     Error(String),
+    // empty line
     Empty,
+    // [section]
     Section(String),
-    Value(String, String), /* Vector(String, Vec<String>), impossible, because OrderedHashMap field has type String, not Vec */
+    // item = value
+    Value(String, String),
 }
 
+/// parse single line of ini file
 pub fn parse_line(line: &str) -> Parsed {
     let content = match line.split(';').next() {
         Some(value) => value.trim(),

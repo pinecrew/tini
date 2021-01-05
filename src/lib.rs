@@ -43,9 +43,9 @@ pub mod error;
 mod ordered_hashmap;
 mod parser;
 
+use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
-use error as crate_error;
 use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
@@ -74,7 +74,7 @@ impl Ini {
     }
 
     /// Private construct method which creaate [Ini] struct from input string
-    fn from_string(string: &str) -> Result<Ini, crate_error::Error> {
+    fn from_string(string: &str) -> Result<Ini, Error> {
         let mut result = Ini::new();
         for (index, line) in string.lines().enumerate() {
             match parse_line(&line, index)? {
@@ -114,7 +114,7 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, crate_error::Error> {
+    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, Error> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
         Ini::from_reader(&mut reader)
@@ -140,7 +140,7 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, crate_error::Error> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, Error> {
         let mut buffer = String::new();
         reader.read_to_string(&mut buffer)?;
         Ini::from_string(&buffer)
@@ -156,7 +156,7 @@ impl Ini {
     /// let value: Option<u8> = conf.get("section", "one");
     /// assert_eq!(value, Some(1));
     /// ```
-    pub fn from_buffer<S: Into<String>>(buf: S) -> Result<Ini, crate_error::Error> {
+    pub fn from_buffer<S: Into<String>>(buf: S) -> Result<Ini, Error> {
         Ini::from_string(&buf.into())
     }
 
@@ -593,12 +593,10 @@ impl<'a> Iterator for IniIterMut<'a> {
     }
 }
 
-
-
 #[cfg(test)]
 mod library_test {
-    use crate::error::Error;
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn bool() -> Result<(), Error> {

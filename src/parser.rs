@@ -37,7 +37,7 @@ pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
         // if key is None => error
         let key = match pair.next() {
             Some(value) => value.to_owned(),
-            None => return Err(ParseError::NoneKey(index))
+            None => return Err(ParseError::NoneKey(index)),
         };
         // if value is None => empty string
         let value = match pair.next() {
@@ -49,13 +49,13 @@ pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
         }
         return Ok(Parsed::Value(key, value));
     }
-    return Err(ParseError::IncorrectSyntax(index))
+    return Err(ParseError::IncorrectSyntax(index));
 }
 
 #[cfg(test)]
 mod test {
-    use crate::error::Error;
     use super::*;
+    use crate::error::Error;
 
     #[test]
     fn test_comment() -> Result<(), Error> {

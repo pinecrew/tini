@@ -2,12 +2,11 @@
 //!
 //! Contains `parse_line` routine to parse single line of ini file
 //! and `Parsed` enum for parsing result
+use crate::error::ParseError;
 
 /// Enum for storing one of 4 possible `parse_line` results
 #[derive(Debug)]
 pub enum Parsed {
-    // parse error
-    Error(String),
     // empty line
     Empty,
     // [section]
@@ -17,28 +16,28 @@ pub enum Parsed {
 }
 
 /// parse single line of ini file
-pub fn parse_line(line: &str) -> Parsed {
+pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
     let content = match line.split(';').next() {
         Some(value) => value.trim(),
-        None => return Parsed::Empty,
+        None => return Ok(Parsed::Empty),
     };
     if content.is_empty() {
-        return Parsed::Empty;
+        return Ok(Parsed::Empty);
     }
     // add checks for content
     if content.starts_with('[') {
         if content.ends_with(']') {
             let section_name = content.trim_matches(|c| c == '[' || c == ']').to_owned();
-            return Parsed::Section(section_name);
-        } else {
-            return Parsed::Error("incorrect section syntax".to_owned());
+            return Ok(Parsed::Section(section_name));
         }
-    } else if content.contains('=') {
+        return Err(ParseError::IncorrectSection(index));
+    }
+    if content.contains('=') {
         let mut pair = content.splitn(2, '=').map(|s| s.trim());
         // if key is None => error
         let key = match pair.next() {
             Some(value) => value.to_owned(),
-            None => return Parsed::Error("key is None".to_owned()),
+            None => return Err(ParseError::NoneKey(index)),
         };
         // if value is None => empty string
         let value = match pair.next() {
@@ -46,70 +45,75 @@ pub fn parse_line(line: &str) -> Parsed {
             None => "".to_owned(),
         };
         if key.is_empty() {
-            return Parsed::Error("empty key".to_owned());
+            return Err(ParseError::EmptyKey(index));
         }
-        return Parsed::Value(key, value);
+        return Ok(Parsed::Value(key, value));
     }
-    Parsed::Error("incorrect syntax".to_owned())
+    return Err(ParseError::IncorrectSyntax(index));
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::error::Error;
 
     #[test]
-    fn test_comment() {
-        match parse_line(";------") {
+    fn test_comment() -> Result<(), Error> {
+        match parse_line(";------", 0)? {
             Parsed::Empty => assert!(true),
             _ => assert!(false),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_entry() {
-        match parse_line("name1 = 100 ; comment") {
+    fn test_entry() -> Result<(), Error> {
+        match parse_line("name1 = 100 ; comment", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("name1"));
                 assert_eq!(text, String::from("100"));
             }
             _ => assert!(false),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_weird_name() {
-        match parse_line("_.,:(){}-#@&*| = 100") {
+    fn test_weird_name() -> Result<(), Error> {
+        match parse_line("_.,:(){}-#@&*| = 100", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("_.,:(){}-#@&*|"));
                 assert_eq!(text, String::from("100"));
             }
             _ => assert!(false),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_text_entry() {
-        match parse_line("text_name = hello world!") {
+    fn test_text_entry() -> Result<(), Error> {
+        match parse_line("text_name = hello world!", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("text_name"));
                 assert_eq!(text, String::from("hello world!"));
             }
             _ => assert!(false),
         }
+        Ok(())
     }
 
     #[test]
     fn test_incorrect_token() {
-        match parse_line("[section = 1, 2 = value") {
-            Parsed::Error(_) => assert!(true),
+        match parse_line("[section = 1, 2 = value", 0) {
+            Err(_) => assert!(true),
             _ => assert!(false),
         }
     }
 
     #[test]
     fn test_incorrect_key_value_line() {
-        match parse_line("= 3") {
-            Parsed::Error(_) => assert!(true),
+        match parse_line("= 3", 0) {
+            Err(_) => assert!(true),
             _ => assert!(false),
         }
     }

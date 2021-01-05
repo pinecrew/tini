@@ -17,7 +17,7 @@
 //! # use tini::Ini;
 //! let conf = Ini::from_buffer(["[search]",
 //!                              "g = google.com",
-//!                              "dd = duckduckgo.com"].join("\n"));
+//!                              "dd = duckduckgo.com"].join("\n")).ok().unwrap();
 //!
 //! let g: String = conf.get("search", "g").unwrap();
 //! let dd: String = conf.get("search", "dd").unwrap();
@@ -39,9 +39,11 @@
 //! assert_eq!(consts, [3.1416, 2.7183]);
 //! assert_eq!(lost, [4, 8, 15, 16, 23, 42]);
 //! ````
+pub mod error;
 mod ordered_hashmap;
 mod parser;
 
+use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;
@@ -72,23 +74,22 @@ impl Ini {
     }
 
     /// Private construct method which creaate [Ini] struct from input string
-    fn from_string(string: &str) -> Ini {
+    fn from_string(string: &str) -> Result<Ini, Error> {
         let mut result = Ini::new();
-        for (i, line) in string.lines().enumerate() {
-            match parse_line(&line) {
+        for (index, line) in string.lines().enumerate() {
+            match parse_line(&line, index)? {
                 Parsed::Section(name) => result = result.section(name),
                 Parsed::Value(name, value) => result = result.item(name, value),
-                Parsed::Error(msg) => println!("line {}: error: {}", i, msg),
                 _ => (),
             };
         }
-        result
+        Ok(result)
     }
 
     /// Construct Ini from file
     ///
     /// # Errors
-    /// Errors returned by [File::open](File::open) and [BufReader::read_to_string](BufReader::read_to_string)
+    /// This function will return an [Error] if file cannot be opened or parsed
     ///
     /// # Examples
     /// You may use [Path]
@@ -111,7 +112,7 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, io::Error> {
+    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, Error> {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
         Ini::from_reader(&mut reader)
@@ -120,7 +121,7 @@ impl Ini {
     /// Construct Ini from any struct who implement [Read](std::io::Read) trait
     ///
     /// # Errors
-    /// Errors returned by [Read::read_to_string](Read::read_to_string)
+    /// This function will return an [Error] if reader cannot be read or parsed
     ///
     /// # Example
     ///
@@ -135,23 +136,26 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, io::Error> {
+    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, Error> {
         let mut buffer = String::new();
         reader.read_to_string(&mut buffer)?;
-        Ok(Ini::from_string(&buffer))
+        Ini::from_string(&buffer)
     }
 
     /// Construct Ini from buffer which can be [Into]ed to String
     ///
+    /// # Errors
+    /// This function will return an [Error] if buffer cannot be parsed
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1");
+    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
     ///
     /// let value: Option<u8> = conf.get("section", "one");
     /// assert_eq!(value, Some(1));
     /// ```
-    pub fn from_buffer<S: Into<String>>(buf: S) -> Ini {
+    pub fn from_buffer<S: Into<String>>(buf: S) -> Result<Ini, Error> {
         Ini::from_string(&buf.into())
     }
 
@@ -301,7 +305,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1");
+    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
     ///
     /// // you may use `conf.to_buffer()`
     /// let value: String = conf.to_buffer();
@@ -331,7 +335,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1");
+    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
     ///
     /// let value: Option<u8> = conf.get("section", "one");
     ///
@@ -350,7 +354,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\nlist = 1, 2, 3, 4");
+    /// let conf = Ini::from_buffer("[section]\nlist = 1, 2, 3, 4").unwrap();
     ///
     /// let value: Option<Vec<u8>> = conf.get_vec("section", "list");
     ///
@@ -372,7 +376,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\nlist = 1|2|3|4");
+    /// let conf = Ini::from_buffer("[section]\nlist = 1|2|3|4").unwrap();
     ///
     /// let value: Option<Vec<u8>> = conf.get_vec_with_sep("section", "list", "|");
     ///
@@ -398,7 +402,7 @@ impl Ini {
     /// # use tini::Ini;
     /// use std::collections::HashMap;
     ///
-    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2");
+    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2").unwrap();
     ///
     /// // remove section from `conf`
     /// let mut section = conf.remove_section("a").unwrap();
@@ -437,7 +441,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2");
+    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2").unwrap();
     ///
     /// let section = config.remove_section("one").unwrap();
     ///
@@ -455,7 +459,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2");
+    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2").unwrap();
     ///
     /// let item = config.remove_item("one", "b");
     ///
@@ -480,7 +484,7 @@ impl Ini {
     /// # use tini::Ini;
     /// let conf = Ini::from_buffer(["[search]",
     ///                         "g = google.com",
-    ///                         "dd = duckduckgo.com"].join("\n"));
+    ///                         "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
     /// let search = conf.iter_section("search").unwrap();
     /// for (k, v) in search {
@@ -591,26 +595,30 @@ impl<'a> Iterator for IniIterMut<'a> {
 #[cfg(test)]
 mod library_test {
     use super::*;
+    use crate::error::Error;
 
     #[test]
-    fn bool() {
-        let ini = Ini::from_buffer("[string]\nabc = true");
+    fn bool() -> Result<(), Error> {
+        let ini = Ini::from_buffer("[string]\nabc = true")?;
         let abc: Option<bool> = ini.get("string", "abc");
         assert_eq!(abc, Some(true));
+        Ok(())
     }
 
     #[test]
-    fn float() {
-        let ini = Ini::from_string("[section]\nname=10.5");
+    fn float() -> Result<(), Error> {
+        let ini = Ini::from_string("[section]\nname=10.5")?;
         let name: Option<f64> = ini.get("section", "name");
         assert_eq!(name, Some(10.5));
+        Ok(())
     }
 
     #[test]
-    fn float_vec() {
-        let ini = Ini::from_string("[section]\nname=1.2, 3.4, 5.6");
+    fn float_vec() -> Result<(), Error> {
+        let ini = Ini::from_string("[section]\nname=1.2, 3.4, 5.6")?;
         let name: Option<Vec<f64>> = ini.get_vec("section", "name");
         assert_eq!(name, Some(vec![1.2, 3.4, 5.6]));
+        Ok(())
     }
 
     #[test]
@@ -621,38 +629,43 @@ mod library_test {
     }
 
     #[test]
-    fn string_vec() {
-        let ini = Ini::from_string("[section]\nname=a, b, c");
+    fn string_vec() -> Result<(), Error> {
+        let ini = Ini::from_string("[section]\nname=a, b, c")?;
         let name: Vec<String> = ini.get_vec("section", "name").unwrap_or(vec![]);
         assert_eq!(name, ["a", "b", "c"]);
+        Ok(())
     }
 
     #[test]
-    fn parse_error() {
-        let ini = Ini::from_string("[section]\nlist = 1, 2, --, 4");
+    fn parse_error() -> Result<(), Error> {
+        let ini = Ini::from_string("[section]\nlist = 1, 2, --, 4")?;
         let name: Option<Vec<u8>> = ini.get_vec("section", "list");
         assert_eq!(name, None);
+        Ok(())
     }
 
     #[test]
-    fn get_or_macro() {
-        let ini = Ini::from_string("[section]\nlist = 1, 2, --, 4");
+    fn get_or_macro() -> Result<(), Error> {
+        let ini = Ini::from_string("[section]\nlist = 1, 2, --, 4")?;
         let with_value: Vec<u8> = ini.get_vec("section", "list").unwrap_or(vec![1, 2, 3, 4]);
         assert_eq!(with_value, [1, 2, 3, 4]);
+        Ok(())
     }
 
     #[test]
-    fn ordering_iter() {
-        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3");
+    fn ordering_iter() -> Result<(), Error> {
+        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3")?;
         let keys: Vec<&String> = ini.document.get("a").unwrap().iter().map(|(k, _)| k).collect();
         assert_eq!(["c", "b", "a"], keys[..]);
+        Ok(())
     }
 
     #[test]
-    fn ordering_keys() {
-        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3");
+    fn ordering_keys() -> Result<(), Error> {
+        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3")?;
         let keys: Vec<&String> = ini.document.get("a").unwrap().keys().collect();
         assert_eq!(["c", "b", "a"], keys[..]);
+        Ok(())
     }
 
     #[test]

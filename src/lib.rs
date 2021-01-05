@@ -89,9 +89,7 @@ impl Ini {
     /// Construct Ini from file
     ///
     /// # Errors
-    /// Returns one of the error types
-    /// - [io::Error]
-    /// - [error::ParseError]
+    /// This function will return an [Error] if file cannot be opened or parsed
     ///
     /// # Examples
     /// You may use [Path]
@@ -123,9 +121,7 @@ impl Ini {
     /// Construct Ini from any struct who implement [Read](std::io::Read) trait
     ///
     /// # Errors
-    /// Returns one of the error types
-    /// - [io::Error]
-    /// - [error::ParseError]
+    /// This function will return an [Error] if reader cannot be read or parsed
     ///
     /// # Example
     ///
@@ -147,6 +143,9 @@ impl Ini {
     }
 
     /// Construct Ini from buffer which can be [Into]ed to String
+    ///
+    /// # Errors
+    /// This function will return an [Error] if buffer cannot be parsed
     ///
     /// # Example
     /// ```

@@ -42,10 +42,12 @@
 pub mod error;
 mod ordered_hashmap;
 mod parser;
+pub mod section;
 
 use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
+use section::Section;
 use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
@@ -54,23 +56,18 @@ use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
 
-type Section = OrderedHashMap<String, String>;
-type Document = OrderedHashMap<String, Section>;
-type SectionIter<'a> = ordered_hashmap::Iter<'a, String, String>;
-type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
-
 /// Structure for INI-file data
 #[derive(Debug)]
 pub struct Ini {
     #[doc(hidden)]
-    document: Document,
+    document: OrderedHashMap<String, Section>,
     last_section_name: String,
 }
 
 impl Ini {
     /// Create an empty Ini (similar to [Ini::default])
     pub fn new() -> Ini {
-        Ini { document: Document::new(), last_section_name: String::new() }
+        Ini { document: OrderedHashMap::new(), last_section_name: String::new() }
     }
 
     /// Private construct method which creaate [Ini] struct from input string
@@ -429,7 +426,7 @@ impl Ini {
         S: IntoIterator<Item = (K, V)>,
     {
         self.last_section_name = key.into();
-        let mut new_section = OrderedHashMap::new();
+        let mut new_section = Section::new();
         for (k, v) in section.into_iter() {
             new_section.insert(k.to_string(), v.to_string());
         }
@@ -491,7 +488,7 @@ impl Ini {
     ///     println!("key: {} value: {}", k, v);
     /// }
     /// ```
-    pub fn iter_section(&self, section: &str) -> Option<SectionIter> {
+    pub fn iter_section(&self, section: &str) -> Option<section::Iter> {
         self.document.get(section).map(|value| value.iter())
     }
 
@@ -570,7 +567,7 @@ pub struct IniIter<'a> {
 }
 
 impl<'a> Iterator for IniIter<'a> {
-    type Item = (&'a String, SectionIter<'a>);
+    type Item = (&'a String, section::Iter<'a>);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -584,7 +581,7 @@ pub struct IniIterMut<'a> {
 }
 
 impl<'a> Iterator for IniIterMut<'a> {
-    type Item = (&'a String, SectionIterMut<'a>);
+    type Item = (&'a String, section::IterMut<'a>);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

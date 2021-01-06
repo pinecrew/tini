@@ -119,7 +119,11 @@ where
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn remove(&mut self, k: &K) -> Option<V> {
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + PartialEq<Q>,
+        Q: Hash + Eq,
+    {
         match self.keys.iter().position(|x| x == k) {
             Some(index) => {
                 self.keys.swap_remove(index);

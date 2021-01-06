@@ -34,7 +34,7 @@ impl Section {
         self.base.insert(key, value)
     }
 
-    pub fn remove(&mut self, key: &String) -> Option<String> {
+    pub fn remove(&mut self, key: &str) -> Option<String> {
         self.base.remove(key)
     }
 }

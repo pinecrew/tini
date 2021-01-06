@@ -17,7 +17,7 @@
 //! # use tini::Ini;
 //! let conf = Ini::from_buffer(["[search]",
 //!                              "g = google.com",
-//!                              "dd = duckduckgo.com"].join("\n")).ok().unwrap();
+//!                              "dd = duckduckgo.com"].join("\n")).unwrap();
 //!
 //! let g: String = conf.get("search", "g").unwrap();
 //! let dd: String = conf.get("search", "dd").unwrap();
@@ -276,6 +276,9 @@ impl Ini {
 
     /// Write [Ini] to any struct who implement [Write] trait.
     ///
+    /// # Errors
+    /// Errors returned by [Write::write_all](Write::write_all)
+    ///
     /// # Example
     /// ```
     /// # use tini::Ini;
@@ -290,9 +293,6 @@ impl Ini {
     /// let casted_result = String::from_utf8(output).unwrap();
     /// assert_eq!(casted_result, "[a]\na = 1")
     /// ```
-    ///
-    /// # Errors
-    /// Errors returned by [Write::write_all](Write::write_all)
     pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         writer.write_all(self.to_buffer().as_bytes())?;
         Ok(())
@@ -564,7 +564,7 @@ pub struct IniIter<'a> {
 }
 
 impl<'a> Iterator for IniIter<'a> {
-    type Item = (&'a String,&'a Section);
+    type Item = (&'a String, &'a Section);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
@@ -589,7 +589,6 @@ impl<'a> Iterator for IniIterMut<'a> {
 #[cfg(test)]
 mod library_test {
     use super::*;
-    use crate::error::Error;
 
     #[test]
     fn bool() -> Result<(), Error> {

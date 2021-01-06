@@ -37,16 +37,16 @@ pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
         // if key is None => error
         let key = match pair.next() {
             Some(value) => value.to_owned(),
-            None => return Err(ParseError::NoneKey(index)),
+            None => return Err(ParseError::EmptyKey(index)),
         };
+        if key.is_empty() {
+            return Err(ParseError::EmptyKey(index));
+        }
         // if value is None => empty string
         let value = match pair.next() {
             Some(value) => value.to_owned(),
             None => "".to_owned(),
         };
-        if key.is_empty() {
-            return Err(ParseError::EmptyKey(index));
-        }
         return Ok(Parsed::Value(key, value));
     }
     return Err(ParseError::IncorrectSyntax(index));

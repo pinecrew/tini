@@ -10,30 +10,37 @@ pub struct Section {
 }
 
 impl Section {
+    /// `todo`
     pub fn new() -> Section {
         Section { base: OrderedHashMap::new() }
     }
 
+    /// `todo`
     pub fn iter(&self) -> Iter {
         return Iter { iter: self.base.iter() };
     }
 
+    /// `todo`
     pub fn iter_mut(&mut self) -> IterMut {
         return IterMut { iter: self.base.iter_mut() };
     }
 
+    /// `todo`
     pub fn get(&self, key: &str) -> Option<&String> {
         self.base.get(key)
     }
 
+    /// `todo`
     pub fn keys(&self) -> Keys {
         Keys { iter: self.base.keys() }
     }
 
+    /// `todo`
     pub fn insert(&mut self, key: String, value: String) -> Option<String> {
         self.base.insert(key, value)
     }
 
+    /// `todo`
     pub fn remove(&mut self, key: &str) -> Option<String> {
         self.base.remove(key)
     }

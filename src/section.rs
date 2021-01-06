@@ -1,4 +1,7 @@
 use crate::ordered_hashmap::OrderedHashMap;
+use std::fmt;
+use std::hash::Hash;
+use std::iter::FromIterator;
 
 #[derive(Debug)]
 pub struct Section {
@@ -42,6 +45,22 @@ impl IntoIterator for Section {
 
     fn into_iter(self) -> Self::IntoIter {
         IntoIter { iter: self.base.into_iter() }
+    }
+}
+
+impl<K, V> FromIterator<(K, V)> for Section
+where
+    K: fmt::Display + Eq + Hash,
+    V: fmt::Display,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut s = Section::new();
+
+        for (k, v) in iter {
+            s.insert(k.to_string(), v.to_string());
+        }
+
+        s
     }
 }
 

@@ -7,6 +7,7 @@ use std::borrow::Borrow;
 use std::collections::hash_map::{self, Entry};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::iter::FromIterator;
 use std::iter::IntoIterator;
 
 /// Ordered hashmap built on top of std::collections::HashMap
@@ -249,6 +250,20 @@ where
     }
 }
 
+impl<K, V> FromIterator<(K, V)> for OrderedHashMap<K, V>
+where
+    K: Eq + Hash + Clone,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut map = OrderedHashMap::new();
+
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+
+        map
+    }
+}
 /// An iterator over the entries of a `OrderedHashMap`.
 ///
 /// This `struct` is created by the `iter` method on `OrderedHashMap`.

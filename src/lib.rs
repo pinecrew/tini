@@ -52,6 +52,7 @@ use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Read, Write};
+use std::iter::FromIterator;
 use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
@@ -426,11 +427,7 @@ impl Ini {
         S: IntoIterator<Item = (K, V)>,
     {
         self.last_section_name = key.into();
-        let mut new_section = Section::new();
-        for (k, v) in section.into_iter() {
-            new_section.insert(k.to_string(), v.to_string());
-        }
-        self.document.insert(self.last_section_name.clone(), new_section);
+        self.document.insert(self.last_section_name.clone(), Section::from_iter(section));
     }
 
     /// Remove section from [Ini] and return it.

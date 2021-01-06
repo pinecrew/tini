@@ -42,12 +42,12 @@
 pub mod error;
 mod ordered_hashmap;
 mod parser;
-pub mod section;
+mod section;
 
 use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
-use section::Section;
+pub use section::{Iter as SectionIter, IterMut as SectionIterMut, Keys, Section};
 use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
@@ -561,8 +561,8 @@ impl Default for Ini {
     }
 }
 
-#[doc(hidden)]
 pub struct IniIter<'a> {
+    #[doc(hidden)]
     iter: ordered_hashmap::Iter<'a, String, Section>,
 }
 
@@ -575,8 +575,8 @@ impl<'a> Iterator for IniIter<'a> {
     }
 }
 
-#[doc(hidden)]
 pub struct IniIterMut<'a> {
+    #[doc(hidden)]
     iter: ordered_hashmap::IterMut<'a, String, Section>,
 }
 

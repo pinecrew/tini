@@ -502,9 +502,9 @@ impl Ini {
     ///                      .section("bar")
     ///                      .item("one", "1");
     ///
-    /// for (section, iter) in conf.iter() {
-    ///     for (key, val) in iter {
-    ///         println!("section: {} key: {} val: {}", section, key, val);
+    /// for (name, section) in conf.iter() {
+    ///     for (key, val) in section.iter() {
+    ///         println!("section: {} key: {} val: {}", name, key, val);
     ///     }
     /// }
     pub fn iter(&self) -> IniIter {
@@ -524,8 +524,8 @@ impl Ini {
     ///                          .section("bar")
     ///                          .item("one", "1");
     ///
-    /// for (section, iter_mut) in conf.iter_mut() {
-    ///     for (key, val) in iter_mut {
+    /// for (name, section) in conf.iter_mut() {
+    ///     for (key, val) in section.iter_mut() {
     ///         *val = String::from("replaced");
     ///     }
     /// }
@@ -537,9 +537,9 @@ impl Ini {
 impl fmt::Display for Ini {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buffer = String::new();
-        for (section, iter) in self.iter() {
-            buffer.push_str(&format!("[{}]\n", section));
-            for (key, value) in iter {
+        for (name, section) in self.iter() {
+            buffer.push_str(&format!("[{}]\n", name));
+            for (key, value) in section.iter() {
                 buffer.push_str(&format!("{} = {}\n", key, value));
             }
             // blank line between sections
@@ -564,11 +564,11 @@ pub struct IniIter<'a> {
 }
 
 impl<'a> Iterator for IniIter<'a> {
-    type Item = (&'a String, section::Iter<'a>);
+    type Item = (&'a String,&'a Section);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(string, section)| (string, section.iter()))
+        self.iter.next()
     }
 }
 
@@ -578,11 +578,11 @@ pub struct IniIterMut<'a> {
 }
 
 impl<'a> Iterator for IniIterMut<'a> {
-    type Item = (&'a String, section::IterMut<'a>);
+    type Item = (&'a String, &'a mut Section);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(string, section)| (string, section.iter_mut()))
+        self.iter.next()
     }
 }
 
@@ -668,7 +668,7 @@ mod library_test {
 
         // mutate items
         for (_, item) in config.iter_mut() {
-            for (_, value) in item {
+            for (_, value) in item.iter_mut() {
                 let v: i32 = value.parse().unwrap();
                 *value = format!("{}", v + 1);
             }

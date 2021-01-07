@@ -42,18 +42,14 @@
 pub mod error;
 mod ordered_hashmap;
 mod parser;
-mod section;
 
 use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
-pub use section::Iter as SectionIter;
-use section::Section;
 use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Read, Write};
-use std::iter::FromIterator;
 use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
@@ -349,13 +345,15 @@ impl Ini {
     /// assert_eq!(conf.get::<String>("colors", "black"), Some("#000000".to_string()));
     /// assert_eq!(conf.get::<String>("colors", "white"), Some("#ffffff".to_string()));
     /// ```
-    pub fn items<K, V, S>(mut self, items: S) -> Self
+    pub fn items<K, V, I>(mut self, items: I) -> Self
     where
         K: fmt::Display + Eq + Hash,
         V: fmt::Display,
-        S: IntoIterator<Item = (K, V)>,
+        I: IntoIterator<Item = (K, V)>,
     {
-        self.document.insert(self.last_section_name.clone(), Section::from_iter(items));
+        for (k, v) in items {
+            self = self.item(k.to_string(), v.to_string());
+        }
         self
     }
 
@@ -477,12 +475,9 @@ impl Ini {
     ///     println!("key: {} value: {}", k, v);
     /// }
     /// ```
-    pub fn section_iter<K: Into<String>>(&self, section: K) -> section::Iter {
+    pub fn section_iter<K: Into<String>>(&self, section: K) -> SectionIter {
         let name = section.into();
-        if let Some(section) = self.document.get(&name) {
-            return section.iter();
-        }
-        self.empty_section.iter()
+        SectionIter{ iter: self.document.get(&name).unwrap_or(&self.empty_section).iter() }
     }
 
     /// Iterate over all sections, yielding pairs of section name and iterator
@@ -498,8 +493,8 @@ impl Ini {
     ///                      .section("bar")
     ///                      .item("one", "1");
     ///
-    /// for (name, section) in conf.iter() {
-    ///     for (key, val) in section.iter() {
+    /// for (name, section_iter) in conf.iter() {
+    ///     for (key, val) in section_iter {
     ///         println!("section: {} key: {} val: {}", name, key, val);
     ///     }
     /// }
@@ -520,8 +515,8 @@ impl Ini {
     ///                          .section("bar")
     ///                          .item("one", "1");
     ///
-    /// for (name, section) in conf.iter_mut() {
-    ///     for (key, val) in section.iter_mut() {
+    /// for (name, section_iter) in conf.iter_mut() {
+    ///     for (key, val) in section_iter {
     ///         *val = String::from("replaced");
     ///     }
     /// }
@@ -535,7 +530,7 @@ impl fmt::Display for Ini {
         let mut buffer = String::new();
         for (name, section) in self.iter() {
             buffer.push_str(&format!("[{}]\n", name));
-            for (key, value) in section.iter() {
+            for (key, value) in section {
                 buffer.push_str(&format!("{} = {}\n", key, value));
             }
             // blank line between sections
@@ -560,11 +555,11 @@ pub struct IniIter<'a> {
 }
 
 impl<'a> Iterator for IniIter<'a> {
-    type Item = (&'a String, &'a Section);
+    type Item = (&'a String, SectionIter<'a>);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
+        self.iter.next().map(|(name, section)| (name, SectionIter { iter: section.iter() }))
     }
 }
 
@@ -574,9 +569,37 @@ pub struct IniIterMut<'a> {
 }
 
 impl<'a> Iterator for IniIterMut<'a> {
-    type Item = (&'a String, &'a mut Section);
+    type Item = (&'a String, SectionIterMut<'a>);
 
     #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().map(|(name, section)| (name, SectionIterMut { iter: section.iter_mut() }))
+    }
+}
+
+type Section = OrderedHashMap<String, String>;
+
+pub struct SectionIter<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::Iter<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIter<'a> {
+    type Item = (&'a String, &'a String);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+pub struct SectionIterMut<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::IterMut<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIterMut<'a> {
+    type Item = (&'a String, &'a mut String);
+
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
     }
@@ -650,20 +673,12 @@ mod library_test {
     }
 
     #[test]
-    fn ordering_keys() -> Result<(), Error> {
-        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3")?;
-        let keys: Vec<&String> = ini.document.get("a").unwrap().keys().collect();
-        assert_eq!(["c", "b", "a"], keys[..]);
-        Ok(())
-    }
-
-    #[test]
     fn mutating() {
         let mut config = Ini::new().section("items").item("a", "1").item("b", "2").item("c", "3");
 
         // mutate items
-        for (_, item) in config.iter_mut() {
-            for (_, value) in item.iter_mut() {
+        for (_, iter) in config.iter_mut() {
+            for (_, value) in iter {
                 let v: i32 = value.parse().unwrap();
                 *value = format!("{}", v + 1);
             }

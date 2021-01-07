@@ -82,8 +82,7 @@ where
         self.base.get_mut(k)
     }
 
-
-    pub fn contains_key<Q: ?Sized>(& self, k: &Q) -> bool
+    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
         Q: Hash + Eq,

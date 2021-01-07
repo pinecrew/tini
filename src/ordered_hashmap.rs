@@ -82,6 +82,15 @@ where
         self.base.get_mut(k)
     }
 
+
+    pub fn contains_key<Q: ?Sized>(& self, k: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.base.contains_key(k)
+    }
+
     /// Inserts a key-value pair into the map.
     ///
     /// If the map did not have this key present, [`None`] is returned.

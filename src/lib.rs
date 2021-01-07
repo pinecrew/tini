@@ -47,7 +47,8 @@ mod section;
 use error::Error;
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
-pub use section::{Iter as SectionIter, IterMut as SectionIterMut, Keys, Section};
+pub use section::Iter as SectionIter;
+use section::Section;
 use std::fmt;
 use std::fs::File;
 use std::hash::Hash;
@@ -63,12 +64,13 @@ pub struct Ini {
     #[doc(hidden)]
     document: OrderedHashMap<String, Section>,
     last_section_name: String,
+    empty_section: Section,
 }
 
 impl Ini {
     /// Create an empty Ini (similar to [Ini::default])
     pub fn new() -> Ini {
-        Ini { document: OrderedHashMap::new(), last_section_name: String::new() }
+        Ini { document: OrderedHashMap::new(), last_section_name: String::new(), empty_section: Section::new() }
     }
 
     /// Private construct method which creaate [Ini] struct from input string
@@ -155,6 +157,63 @@ impl Ini {
     /// ```
     pub fn from_buffer<S: Into<String>>(buf: S) -> Result<Ini, Error> {
         Ini::from_string(&buf.into())
+    }
+
+    /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
+    ///
+    /// # Errors
+    /// Errors returned by [File::create] and [Write::write_all]
+    pub fn to_file<S: AsRef<Path> + ?Sized>(&self, path: &S) -> Result<(), io::Error> {
+        let file = File::create(path)?;
+        let mut writer = BufWriter::new(file);
+        self.to_writer(&mut writer)
+    }
+
+    /// Write [Ini] to any struct who implement [Write] trait.
+    ///
+    /// # Errors
+    /// Errors returned by [Write::write_all](Write::write_all)
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::default().section("a").item("a", 1);
+    ///
+    /// // create output Vec<u8> buffer
+    /// let mut output = Vec::new();
+    /// // let's write data to Vec<u8>
+    /// conf.to_writer(&mut output);
+    ///
+    /// // cast Vec<u8> to utf-8 string
+    /// let casted_result = String::from_utf8(output).unwrap();
+    /// assert_eq!(casted_result, "[a]\na = 1")
+    /// ```
+    pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+        writer.write_all(self.to_buffer().as_bytes())?;
+        Ok(())
+    }
+
+    /// Write [Ini] to buffer (similar to `to_string()`)
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
+    ///
+    /// // you may use `conf.to_buffer()`
+    /// let value: String = conf.to_buffer();
+    ///
+    /// // or conf.to_string();
+    /// let value = conf.to_string();
+    ///
+    /// // or format!("{}", conf);
+    /// let value: String = format!("{}", conf);
+    ///
+    /// // but the result will be the same
+    /// assert_eq!(value, "[section]\none = 1");
+    /// ```
+    pub fn to_buffer(&self) -> String {
+        self.to_string()
     }
 
     /// Set section name for following [`item()`](Ini::item)s.
@@ -264,61 +323,77 @@ impl Ini {
         self.item_vec_with_sep(name, vector, ", ")
     }
 
-    /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
+    /// Insert `Section` or any other object who support [IntoIterator] to end of [Ini].
     ///
-    /// # Errors
-    /// Errors returned by [File::create] and [Write::write_all]
-    pub fn to_file<S: AsRef<Path> + ?Sized>(&self, path: &S) -> Result<(), io::Error> {
-        let file = File::create(path)?;
-        let mut writer = BufWriter::new(file);
-        self.to_writer(&mut writer)
-    }
-
-    /// Write [Ini] to any struct who implement [Write] trait.
+    /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
     ///
-    /// # Errors
-    /// Errors returned by [Write::write_all](Write::write_all)
+    /// - `key` must support [Into] to [String]
+    /// - `value` msut support [IntoIterator] trait
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::default().section("a").item("a", 1);
+    /// use std::collections::HashMap;
     ///
-    /// // create output Vec<u8> buffer
-    /// let mut output = Vec::new();
-    /// // let's write data to Vec<u8>
-    /// conf.to_writer(&mut output);
+    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2").unwrap();
     ///
-    /// // cast Vec<u8> to utf-8 string
-    /// let casted_result = String::from_utf8(output).unwrap();
-    /// assert_eq!(casted_result, "[a]\na = 1")
+    /// // create custom section
+    /// let mut numbers = HashMap::new();
+    /// numbers.insert("round_pi", 3);
+    /// // and add to `conf`
+    /// conf = conf.section("numbers").items(numbers);
+    ///
+    /// conf = conf.section("colors").items(vec![("black", "#000000"), ("white", "#ffffff")]);
+    /// assert_eq!(conf.get::<u8>("a", "a"), Some(1));
+    /// assert_eq!(conf.get::<u8>("numbers", "round_pi"), Some(3));
+    /// assert_eq!(conf.get::<String>("colors", "black"), Some("#000000".to_string()));
+    /// assert_eq!(conf.get::<String>("colors", "white"), Some("#ffffff".to_string()));
     /// ```
-    pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
-        writer.write_all(self.to_buffer().as_bytes())?;
-        Ok(())
+    pub fn items<K, V, S>(mut self, items: S) -> Self
+    where
+        K: fmt::Display + Eq + Hash,
+        V: fmt::Display,
+        S: IntoIterator<Item = (K, V)>,
+    {
+        self.document.insert(self.last_section_name.clone(), Section::from_iter(items));
+        self
     }
 
-    /// Write [Ini] to buffer (similar to `to_string()`)
+    /// Remove section from [Ini] and return it.
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
+    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2").unwrap();
     ///
-    /// // you may use `conf.to_buffer()`
-    /// let value: String = conf.to_buffer();
+    /// config = config.section("one").clear();
     ///
-    /// // or conf.to_string();
-    /// let value = conf.to_string();
-    ///
-    /// // or format!("{}", conf);
-    /// let value: String = format!("{}", conf);
-    ///
-    /// // but the result will be the same
-    /// assert_eq!(value, "[section]\none = 1");
+    /// assert_eq!(config.get::<u8>("one", "a"), None);
+    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
     /// ```
-    pub fn to_buffer(&self) -> String {
-        self.to_string()
+    pub fn clear(mut self) -> Self {
+        self.document.remove(&self.last_section_name);
+        self
+    }
+
+    /// Remove item from section and return it.
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2").unwrap();
+    ///
+    /// config = config.section("one").remove("b");
+    ///
+    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
+    /// assert_eq!(config.get::<u8>("one", "b"), None);
+    /// ```
+    pub fn remove<K: Into<String>>(mut self, key: K) -> Self {
+        let key = key.into();
+        if let Some(sec) = self.document.get_mut(&self.last_section_name) {
+            sec.remove(&key);
+        }
+        self
     }
 
     /// Private method which get value by `key` from `section`
@@ -388,89 +463,6 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// Insert `Section` or any other object who support [IntoIterator] to end of [Ini].
-    ///
-    /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
-    ///
-    /// - `key` must support [Into] to [String]
-    /// - `value` msut support [IntoIterator] trait
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// use std::collections::HashMap;
-    ///
-    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2").unwrap();
-    ///
-    /// // remove section from `conf`
-    /// let mut section = conf.remove_section("a").unwrap();
-    /// // add new value to removed section
-    /// section.insert("c".to_string(), "4".to_string());
-    /// // and insert again to `conf`
-    /// conf.insert_section("mod_a", section);
-    ///
-    /// // create custom section
-    /// let mut numbers = HashMap::new();
-    /// numbers.insert("round_pi", 3);
-    /// /// and add to `conf`
-    /// conf.insert_section("numbers", numbers);
-    ///
-    /// assert_eq!(conf.get::<u8>("a", "a"), None);
-    /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));
-    /// assert_eq!(conf.get::<u8>("numbers", "round_pi"), Some(3));
-    /// ```
-    pub fn insert_section<K, V, I, S>(&mut self, key: I, section: S)
-    where
-        K: fmt::Display + Eq + Hash,
-        V: fmt::Display,
-        I: Into<String>,
-        S: IntoIterator<Item = (K, V)>,
-    {
-        self.last_section_name = key.into();
-        self.document.insert(self.last_section_name.clone(), Section::from_iter(section));
-    }
-
-    /// Remove section from [Ini] and return it.
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2").unwrap();
-    ///
-    /// let section = config.remove_section("one").unwrap();
-    ///
-    /// assert_eq!(section.get("a"), Some(&"1".to_string()));
-    /// assert_eq!(config.get::<u8>("one", "a"), None);
-    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
-    /// ```
-    pub fn remove_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
-        let section = section.into();
-        self.document.remove(&section)
-    }
-
-    /// Remove item from section and return it.
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2").unwrap();
-    ///
-    /// let item = config.remove_item("one", "b");
-    ///
-    /// assert_eq!(item, Some("2".to_string()));
-    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
-    /// assert_eq!(config.get::<u8>("one", "b"), None);
-    /// ```
-    pub fn remove_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
-        let section = section.into();
-        let key = key.into();
-        if let Some(sec) = self.document.get_mut(&section) {
-            sec.remove(&key)
-        } else {
-            None
-        }
-    }
-
     /// Iterate over a section by a name.
     ///
     /// # Example
@@ -480,13 +472,17 @@ impl Ini {
     ///                         "g = google.com",
     ///                         "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
-    /// let search = conf.iter_section("search").unwrap();
+    /// let search = conf.section_iter("search");
     /// for (k, v) in search {
     ///     println!("key: {} value: {}", k, v);
     /// }
     /// ```
-    pub fn iter_section(&self, section: &str) -> Option<section::Iter> {
-        self.document.get(section).map(|value| value.iter())
+    pub fn section_iter<K: Into<String>>(&self, section: K) -> section::Iter {
+        let name = section.into();
+        if let Some(section) = self.document.get(&name) {
+            return section.iter();
+        }
+        self.empty_section.iter()
     }
 
     /// Iterate over all sections, yielding pairs of section name and iterator
@@ -721,12 +717,9 @@ mod library_test {
     #[test]
     fn remove_section() {
         let mut config = Ini::new().section("one").item("a", "1").section("two").item("b", "2");
-        let section = match config.remove_section("one") {
-            Some(value) => value,
-            None => panic!("section not found"),
-        };
 
-        assert_eq!(section.get("a"), Some(&"1".to_string()));
+        config = config.section("one").clear();
+
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("two", "b"), Some(2));
     }
@@ -734,9 +727,9 @@ mod library_test {
     #[test]
     fn remove_item() {
         let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
-        let item = config.remove_item("one", "a");
 
-        assert_eq!(item, Some("1".to_string()));
+        config = config.section("one").remove("a");
+
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("one", "b"), Some(2));
     }

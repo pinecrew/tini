@@ -9,27 +9,22 @@ fn main() {
         .item("b", "2")
         .item("c", "3")
         .section("values")
-        .item("d", "4")
-        .item("e", "5")
-        .item("f", "6");
+        .items(vec![("d", "4"),
+                    ("e", "5"),
+                    ("f", "6")]);
 
     println!("before delete:\n-----\n{}\n-----\n", config);
 
-    let mut section = config.remove_section("values").unwrap();
-    config.remove_item("items", "c");
+    config = config.section("values").clear()
+                   .section("items").remove("c");
 
     println!(" after delete:\n-----\n{}\n-----\n", config);
-
-    // update removed section
-    section.insert(String::from("g"), String::from("42"));
-    // and add with different name
-    config.insert_section("vals", section);
 
     // create custom section using HashMap
     let mut section = HashMap::new();
     section.insert("val", 42);
     // and add
-    config.insert_section("hashmap", section);
+    config = config.section("hashmap").items(section);
 
     println!(" after insert:\n-----\n{}\n-----", config);
 }

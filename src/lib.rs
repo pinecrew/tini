@@ -471,7 +471,7 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// Get iterator for section with given name.
+    /// An iterator visiting all key-value pairs in order of appearance in section.
     ///
     /// If section with given name doesn't exist in document, method returns empty iterator
     ///
@@ -482,13 +482,11 @@ impl Ini {
     ///                              "g = google.com",
     ///                              "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
-    /// for (key, value) in conf.section_iter("search") {
-    ///     match key.as_str() {
-    ///         "g" => assert_eq!(value.as_str(), "google.com"),
-    ///         "dd" => assert_eq!(value.as_str(), "duckduckgo.com"),
-    ///         _ => assert!(false),
-    ///     }
-    /// }
+    /// let mut search = conf.section_iter("search");
+    /// assert_eq!(search.next(), Some((&"g".to_string(), &"google.com".to_string())));
+    /// assert_eq!(search.next(), Some((&"dd".to_string(), &"duckduckgo.com".to_string())));
+    /// assert_eq!(search.next(), None);
+    ///
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
     pub fn section_iter<K: Into<String>>(&self, section: K) -> SectionIter {
@@ -496,9 +494,9 @@ impl Ini {
         SectionIter { iter: self.document.get(&name).unwrap_or(&self.empty_section).iter() }
     }
 
-    /// Iterate over all sections, yielding pairs of section name and iterator
-    /// over the section elements. The concrete iterator element type is
-    /// `(&'a String, SectionIter<'a>)`.
+    /// Iterate over all sections in order of appearance, yielding pairs of
+    /// section name and iterator over the section elements. The iterator
+    /// element type is `(&'a String, SectionIter<'a>)`.
     ///
     /// # Example
     /// ```
@@ -520,7 +518,7 @@ impl Ini {
         IniIter { iter: self.document.iter() }
     }
 
-    /// Iterate over all sections, yielding pairs of section name and mutable
+    /// Iterate over all sections in arbitrary order, yielding pairs of section name and mutable
     /// iterator over the section elements. The concrete iterator element type is
     /// `(&'a String, SectionIterMut<'a>)`.
     ///
@@ -573,6 +571,7 @@ impl Default for Ini {
     }
 }
 
+/// An iterator over the sections of an ini documet
 pub struct IniIter<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::Iter<'a, String, Section>,
@@ -587,6 +586,7 @@ impl<'a> Iterator for IniIter<'a> {
     }
 }
 
+/// A mutable iterator over the sections of an ini documet
 pub struct IniIterMut<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::IterMut<'a, String, Section>,
@@ -603,6 +603,7 @@ impl<'a> Iterator for IniIterMut<'a> {
 
 type Section = OrderedHashMap<String, String>;
 
+/// An iterator over the entries of a section
 pub struct SectionIter<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::Iter<'a, String, String>,
@@ -616,6 +617,7 @@ impl<'a> Iterator for SectionIter<'a> {
     }
 }
 
+/// A mutable iterator over the entries of a section
 pub struct SectionIterMut<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::IterMut<'a, String, String>,

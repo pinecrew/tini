@@ -212,7 +212,7 @@ impl Ini {
         self.to_string()
     }
 
-    /// Set section name for following [`item()`](Ini::item)s.
+    /// Set section name for the following methods in chain ([`item()`](Ini::item), [`items()`](Ini::items), etc.)
     ///
     /// # Warning
     /// This function doesn't create a section.
@@ -220,9 +220,12 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::new().section("empty");
+    /// let mut conf = Ini::new().section("empty");
+    /// assert_eq!(conf.to_buffer(), "");
     ///
-    /// assert_eq!(conf.to_buffer(), String::new());
+    /// // but section will be created on item() call
+    /// conf = conf.section("one").item("a", 1);
+    /// assert_eq!(conf.to_buffer(), "[one]\na = 1");
     /// ```
     pub fn section<S: Into<String>>(mut self, name: S) -> Self {
         self.last_section_name = name.into();
@@ -240,8 +243,7 @@ impl Ini {
     /// let conf = Ini::new().section("test")
     ///                      .item("value", 10);
     ///
-    /// let value: Option<u8> = conf.get("test", "value");
-    /// assert_eq!(value, Some(10));
+    /// assert_eq!(conf.to_buffer(), "[test]\nvalue = 10");
     /// ```
     pub fn item<N, V>(mut self, name: N, value: V) -> Self
     where
@@ -319,19 +321,17 @@ impl Ini {
         self.item_vec_with_sep(name, vector, ", ")
     }
 
-    /// Insert `Section` or any other object who support [IntoIterator] to end of [Ini].
-    ///
-    /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
-    ///
-    /// - `key` must support [Into] to [String]
-    /// - `value` msut support [IntoIterator] trait
+    /// Insert items from any object supporting [IntoIterator] into last section.
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
     /// use std::collections::HashMap;
     ///
-    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2").unwrap();
+    /// let mut conf = Ini::new()
+    ///                .section("colors")
+    ///                .items(vec![("black", "#000000"),
+    ///                            ("white", "#ffffff")]);
     ///
     /// // create custom section
     /// let mut numbers = HashMap::new();
@@ -339,11 +339,14 @@ impl Ini {
     /// // and add to `conf`
     /// conf = conf.section("numbers").items(numbers);
     ///
-    /// conf = conf.section("colors").items(vec![("black", "#000000"), ("white", "#ffffff")]);
-    /// assert_eq!(conf.get::<u8>("a", "a"), Some(1));
-    /// assert_eq!(conf.get::<u8>("numbers", "round_pi"), Some(3));
-    /// assert_eq!(conf.get::<String>("colors", "black"), Some("#000000".to_string()));
-    /// assert_eq!(conf.get::<String>("colors", "white"), Some("#ffffff".to_string()));
+    /// assert_eq!(conf.to_buffer(), [
+    ///                               "[colors]",
+    ///                               "black = #000000",
+    ///                               "white = #ffffff",
+    ///                               "",
+    ///                               "[numbers]",
+    ///                               "round_pi = 3"
+    ///                              ].join("\n"));
     /// ```
     pub fn items<K, V, I>(mut self, items: I) -> Self
     where
@@ -357,34 +360,41 @@ impl Ini {
         self
     }
 
-    /// Remove section from [Ini] and return it.
+    /// Remove section from [Ini].
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2").unwrap();
+    /// let mut config = Ini::from_buffer([
+    ///                                    "[one]",
+    ///                                    "a = 1",
+    ///                                    "[two]",
+    ///                                    "b = 2"
+    ///                                   ].join("\n")).unwrap();
     ///
     /// config = config.section("one").clear();
     ///
-    /// assert_eq!(config.get::<u8>("one", "a"), None);
-    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
+    /// assert_eq!(config.to_buffer(), "[two]\nb = 2");
     /// ```
     pub fn clear(mut self) -> Self {
         self.document.remove(&self.last_section_name);
         self
     }
 
-    /// Remove item from section and return it.
+    /// Remove item from section.
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2").unwrap();
+    /// let mut config = Ini::from_buffer([
+    ///                                    "[one]",
+    ///                                    "a = 1",
+    ///                                    "b = 2"
+    ///                                   ].join("\n")).unwrap();
     ///
     /// config = config.section("one").remove("b");
     ///
-    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
-    /// assert_eq!(config.get::<u8>("one", "b"), None);
+    /// assert_eq!(config.to_buffer(), "[one]\na = 1");
     /// ```
     pub fn remove<K: Into<String>>(mut self, key: K) -> Self {
         let key = key.into();
@@ -461,28 +471,34 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// Iterate over a section by a name.
+    /// Get iterator for section with given name.
+    ///
+    /// If section with given name doesn't exist in document, method returns empty iterator
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
     /// let conf = Ini::from_buffer(["[search]",
-    ///                         "g = google.com",
-    ///                         "dd = duckduckgo.com"].join("\n")).unwrap();
+    ///                              "g = google.com",
+    ///                              "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
-    /// let search = conf.section_iter("search");
-    /// for (k, v) in search {
-    ///     println!("key: {} value: {}", k, v);
+    /// for (key, value) in conf.section_iter("search") {
+    ///     match key.as_str() {
+    ///         "g" => assert_eq!(value.as_str(), "google.com"),
+    ///         "dd" => assert_eq!(value.as_str(), "duckduckgo.com"),
+    ///         _ => assert!(false),
+    ///     }
     /// }
+    /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
     pub fn section_iter<K: Into<String>>(&self, section: K) -> SectionIter {
         let name = section.into();
-        SectionIter{ iter: self.document.get(&name).unwrap_or(&self.empty_section).iter() }
+        SectionIter { iter: self.document.get(&name).unwrap_or(&self.empty_section).iter() }
     }
 
     /// Iterate over all sections, yielding pairs of section name and iterator
     /// over the section elements. The concrete iterator element type is
-    /// `(&'a String, ordered_hashmap::Iter<'a, String, String>)`.
+    /// `(&'a String, SectionIter<'a>)`.
     ///
     /// # Example
     /// ```
@@ -494,8 +510,10 @@ impl Ini {
     ///                      .item("one", "1");
     ///
     /// for (name, section_iter) in conf.iter() {
-    ///     for (key, val) in section_iter {
-    ///         println!("section: {} key: {} val: {}", name, key, val);
+    ///     match name.as_str() {
+    ///         "foo" => assert_eq!(section_iter.count(), 2),
+    ///         "bar" => assert_eq!(section_iter.count(), 1),
+    ///         _ => assert!(false),
     ///     }
     /// }
     pub fn iter(&self) -> IniIter {
@@ -504,7 +522,7 @@ impl Ini {
 
     /// Iterate over all sections, yielding pairs of section name and mutable
     /// iterator over the section elements. The concrete iterator element type is
-    /// `(&'a String, ordered_hashmap::IterMut<'a, String, String>)`.
+    /// `(&'a String, SectionIterMut<'a>)`.
     ///
     /// # Example
     /// ```
@@ -518,6 +536,12 @@ impl Ini {
     /// for (name, section_iter) in conf.iter_mut() {
     ///     for (key, val) in section_iter {
     ///         *val = String::from("replaced");
+    ///     }
+    /// }
+    ///
+    /// for (name, section_iter) in conf.iter() {
+    ///     for (key, val) in section_iter {
+    ///         assert_eq!(val.as_str(), "replaced");
     ///     }
     /// }
     pub fn iter_mut(&mut self) -> IniIterMut {

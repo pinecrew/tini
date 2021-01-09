@@ -232,7 +232,7 @@ impl Ini {
         self
     }
 
-    /// Add key-value pair to last section.
+    /// Add key-value pair to the end of section, specified in last [`section()`](Ini::section) call.
     ///
     /// - `name` must support [Into] to [String]
     /// - `value` must support [Display](fmt::Display) to support conversion to [String]
@@ -257,7 +257,7 @@ impl Ini {
         self
     }
 
-    /// Add key-vector pair to last section separated by `sep` string.
+    /// Like [`item()`](Ini::item), but for vectors
     ///
     /// - `name` must support [Into] to [String]
     /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
@@ -292,7 +292,7 @@ impl Ini {
         self
     }
 
-    /// Add key-vector pair to last section.
+    /// Equivalent of [`item_vec_with_sep(name, vector, ", ")`](Ini::item_vec_with_sep)
     ///
     /// - `name` must support [Into] to [String]
     /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
@@ -321,7 +321,7 @@ impl Ini {
         self.item_vec_with_sep(name, vector, ", ")
     }
 
-    /// Insert items from any object supporting [IntoIterator] into last section.
+    /// Append pairs from any object supporting [IntoIterator] to the section, specified in last [`section()`](Ini::section) call.
     ///
     /// # Example
     /// ```
@@ -426,7 +426,7 @@ impl Ini {
         self.get_raw(section, key).and_then(|x| x.parse().ok())
     }
 
-    /// Get vector value of `key` in `section`.
+    /// Get vector value of `key` in `section`. Value should use `,` as separator.
     ///
     /// The function returns [None](Option::None) if one of the elements can not be parsed.
     ///

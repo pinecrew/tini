@@ -284,7 +284,7 @@ impl Ini {
         S: Into<String>,
         V: fmt::Display,
     {
-        let vector_data = vector.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(sep);
+        let vector_data = vector.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(sep);
         self.document
             .entry(self.last_section_name.clone())
             .or_insert_with(Section::new)
@@ -489,9 +489,8 @@ impl Ini {
     ///
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
-    pub fn section_iter<K: Into<String>>(&self, section: K) -> SectionIter {
-        let name = section.into();
-        SectionIter { iter: self.document.get(&name).unwrap_or(&self.empty_section).iter() }
+    pub fn section_iter(&self, section: &str) -> SectionIter {
+        SectionIter { iter: self.document.get(section).unwrap_or(&self.empty_section).iter() }
     }
 
     /// Iterate over all sections in order of appearance, yielding pairs of

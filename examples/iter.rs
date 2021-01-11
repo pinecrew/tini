@@ -11,9 +11,9 @@ fn main() {
         .item("list", "c, c++, rust");
 
     // iterate over config
-    for (section, item) in config.iter() {
-        println!("section {} with items:", section);
-        for (_, value) in item {
+    for (name, section_iter) in config.iter() {
+        println!("section {} with items:", name);
+        for (_, value) in section_iter {
             println!("  - {}", value);
         }
     }

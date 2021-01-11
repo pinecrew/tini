@@ -17,7 +17,7 @@
 //! # use tini::Ini;
 //! let conf = Ini::from_buffer(["[search]",
 //!                              "g = google.com",
-//!                              "dd = duckduckgo.com"].join("\n")).ok().unwrap();
+//!                              "dd = duckduckgo.com"].join("\n")).unwrap();
 //!
 //! let g: String = conf.get("search", "g").unwrap();
 //! let dd: String = conf.get("search", "dd").unwrap();
@@ -54,23 +54,19 @@ use std::iter::Iterator;
 use std::path::Path;
 use std::str::FromStr;
 
-type Section = OrderedHashMap<String, String>;
-type Document = OrderedHashMap<String, Section>;
-type SectionIter<'a> = ordered_hashmap::Iter<'a, String, String>;
-type SectionIterMut<'a> = ordered_hashmap::IterMut<'a, String, String>;
-
 /// Structure for INI-file data
 #[derive(Debug)]
 pub struct Ini {
     #[doc(hidden)]
-    document: Document,
+    document: OrderedHashMap<String, Section>,
     last_section_name: String,
+    empty_section: Section,
 }
 
 impl Ini {
     /// Create an empty Ini (similar to [Ini::default])
     pub fn new() -> Ini {
-        Ini { document: Document::new(), last_section_name: String::new() }
+        Ini { document: OrderedHashMap::new(), last_section_name: String::new(), empty_section: Section::new() }
     }
 
     /// Private construct method which creaate [Ini] struct from input string
@@ -159,113 +155,6 @@ impl Ini {
         Ini::from_string(&buf.into())
     }
 
-    /// Set section name for following [`item()`](Ini::item)s.
-    ///
-    /// # Warning
-    /// This function doesn't create a section.
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let conf = Ini::new().section("empty");
-    ///
-    /// assert_eq!(conf.to_buffer(), String::new());
-    /// ```
-    pub fn section<S: Into<String>>(mut self, name: S) -> Self {
-        self.last_section_name = name.into();
-        self
-    }
-
-    /// Add key-value pair to last section.
-    ///
-    /// - `name` must support [Into] to [String]
-    /// - `value` must support [Display](fmt::Display) to support conversion to [String]
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let conf = Ini::new().section("test")
-    ///                      .item("value", 10);
-    ///
-    /// let value: Option<u8> = conf.get("test", "value");
-    /// assert_eq!(value, Some(10));
-    /// ```
-    pub fn item<N, V>(mut self, name: N, value: V) -> Self
-    where
-        N: Into<String>,
-        V: fmt::Display,
-    {
-        self.document
-            .entry(self.last_section_name.clone())
-            .or_insert_with(Section::new)
-            .insert(name.into(), value.to_string());
-        self
-    }
-
-    /// Add key-vector pair to last section separated by `sep` string.
-    ///
-    /// - `name` must support [Into] to [String]
-    /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
-    /// - `sep` arbitrary string delimiter
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let conf = Ini::new()
-    ///     .section("default")
-    /// // add a vector with `,` separator: 1,2,3,4
-    ///     .item_vec_with_sep("a", &[1, 2, 3, 4], ",")
-    /// // add a vector with `|` separator: a|b|c
-    ///     .item_vec_with_sep("b", &vec!["a", "b", "c"], "|");
-    ///
-    /// let va: Option<Vec<u8>> = conf.get_vec("default", "a");
-    /// let vb: Vec<String> = conf.get_vec_with_sep("default", "b", "|").unwrap();
-    ///
-    /// assert_eq!(va, Some(vec![1, 2, 3, 4]));
-    /// assert_eq!(vb, ["a", "b", "c"]);
-    /// ```
-    pub fn item_vec_with_sep<S, V>(mut self, name: S, vector: &[V], sep: &str) -> Self
-    where
-        S: Into<String>,
-        V: fmt::Display,
-    {
-        let vector_data = vector.iter().map(|v| format!("{}", v)).collect::<Vec<_>>().join(sep);
-        self.document
-            .entry(self.last_section_name.clone())
-            .or_insert_with(Section::new)
-            .insert(name.into(), vector_data);
-        self
-    }
-
-    /// Add key-vector pair to last section.
-    ///
-    /// - `name` must support [Into] to [String]
-    /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let conf = Ini::new()
-    ///     .section("default")
-    /// // add vector with default separator `, `
-    ///     .item_vec("a", &[1, 2, 3, 4])
-    /// // and another vector
-    ///     .item_vec("b", &vec!["a", "b", "c"]);
-    ///
-    /// let va: Option<Vec<u8>> = conf.get_vec("default", "a");
-    /// let vb: Vec<String> = conf.get_vec("default", "b").unwrap();
-    ///
-    /// assert_eq!(va, Some(vec![1, 2, 3, 4]));
-    /// assert_eq!(vb, ["a", "b", "c"]);
-    /// ```
-    pub fn item_vec<S, V>(self, name: S, vector: &[V]) -> Self
-    where
-        S: Into<String>,
-        V: fmt::Display,
-    {
-        self.item_vec_with_sep(name, vector, ", ")
-    }
-
     /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
     ///
     /// # Errors
@@ -277,6 +166,9 @@ impl Ini {
     }
 
     /// Write [Ini] to any struct who implement [Write] trait.
+    ///
+    /// # Errors
+    /// Errors returned by [Write::write_all](Write::write_all)
     ///
     /// # Example
     /// ```
@@ -292,9 +184,6 @@ impl Ini {
     /// let casted_result = String::from_utf8(output).unwrap();
     /// assert_eq!(casted_result, "[a]\na = 1")
     /// ```
-    ///
-    /// # Errors
-    /// Errors returned by [Write::write_all](Write::write_all)
     pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
         writer.write_all(self.to_buffer().as_bytes())?;
         Ok(())
@@ -323,9 +212,201 @@ impl Ini {
         self.to_string()
     }
 
+    /// Set section name for the following methods in chain ([`item()`](Ini::item), [`items()`](Ini::items), etc.)
+    ///
+    /// # Warning
+    /// This function doesn't create a section.
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut conf = Ini::new().section("empty");
+    /// assert_eq!(conf.to_buffer(), "");
+    ///
+    /// // but section will be created on item() call
+    /// conf = conf.section("one").item("a", 1);
+    /// assert_eq!(conf.to_buffer(), "[one]\na = 1");
+    /// ```
+    pub fn section<S: Into<String>>(mut self, name: S) -> Self {
+        self.last_section_name = name.into();
+        self
+    }
+
+    /// Add key-value pair to the end of section, specified in last [`section()`](Ini::section) call.
+    ///
+    /// - `name` must support [Into] to [String]
+    /// - `value` must support [Display](fmt::Display) to support conversion to [String]
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::new().section("test")
+    ///                      .item("value", 10);
+    ///
+    /// assert_eq!(conf.to_buffer(), "[test]\nvalue = 10");
+    /// ```
+    pub fn item<N, V>(mut self, name: N, value: V) -> Self
+    where
+        N: Into<String>,
+        V: fmt::Display,
+    {
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), value.to_string());
+        self
+    }
+
+    /// Like [`item()`](Ini::item), but for vectors
+    ///
+    /// - `name` must support [Into] to [String]
+    /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
+    /// - `sep` arbitrary string delimiter
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::new()
+    ///     .section("default")
+    /// // add a vector with `,` separator: 1,2,3,4
+    ///     .item_vec_with_sep("a", &[1, 2, 3, 4], ",")
+    /// // add a vector with `|` separator: a|b|c
+    ///     .item_vec_with_sep("b", &vec!["a", "b", "c"], "|");
+    ///
+    /// let va: Option<Vec<u8>> = conf.get_vec("default", "a");
+    /// let vb: Vec<String> = conf.get_vec_with_sep("default", "b", "|").unwrap();
+    ///
+    /// assert_eq!(va, Some(vec![1, 2, 3, 4]));
+    /// assert_eq!(vb, ["a", "b", "c"]);
+    /// ```
+    pub fn item_vec_with_sep<S, V>(mut self, name: S, vector: &[V], sep: &str) -> Self
+    where
+        S: Into<String>,
+        V: fmt::Display,
+    {
+        let vector_data = vector.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(sep);
+        self.document
+            .entry(self.last_section_name.clone())
+            .or_insert_with(Section::new)
+            .insert(name.into(), vector_data);
+        self
+    }
+
+    /// Equivalent of [`item_vec_with_sep(name, vector, ", ")`](Ini::item_vec_with_sep)
+    ///
+    /// - `name` must support [Into] to [String]
+    /// - `vector` elements must support [Display](fmt::Display) to support conversion to [String]
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::new()
+    ///     .section("default")
+    /// // add vector with default separator `, `
+    ///     .item_vec("a", &[1, 2, 3, 4])
+    /// // and another vector
+    ///     .item_vec("b", &vec!["a", "b", "c"]);
+    ///
+    /// let va: Option<Vec<u8>> = conf.get_vec("default", "a");
+    /// let vb: Vec<String> = conf.get_vec("default", "b").unwrap();
+    ///
+    /// assert_eq!(va, Some(vec![1, 2, 3, 4]));
+    /// assert_eq!(vb, ["a", "b", "c"]);
+    /// ```
+    pub fn item_vec<S, V>(self, name: S, vector: &[V]) -> Self
+    where
+        S: Into<String>,
+        V: fmt::Display,
+    {
+        self.item_vec_with_sep(name, vector, ", ")
+    }
+
+    /// Append pairs from any object supporting [IntoIterator] to the section, specified in last [`section()`](Ini::section) call.
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// use std::collections::HashMap;
+    ///
+    /// let mut conf = Ini::new()
+    ///                .section("colors")
+    ///                .items(vec![("black", "#000000"),
+    ///                            ("white", "#ffffff")]);
+    ///
+    /// // create custom section
+    /// let mut numbers = HashMap::new();
+    /// numbers.insert("round_pi", 3);
+    /// // and add to `conf`
+    /// conf = conf.section("numbers").items(numbers);
+    ///
+    /// assert_eq!(conf.to_buffer(), [
+    ///                               "[colors]",
+    ///                               "black = #000000",
+    ///                               "white = #ffffff",
+    ///                               "",
+    ///                               "[numbers]",
+    ///                               "round_pi = 3"
+    ///                              ].join("\n"));
+    /// ```
+    pub fn items<K, V, I>(mut self, items: I) -> Self
+    where
+        K: fmt::Display + Eq + Hash,
+        V: fmt::Display,
+        I: IntoIterator<Item = (K, V)>,
+    {
+        for (k, v) in items {
+            self = self.item(k.to_string(), v.to_string());
+        }
+        self
+    }
+
+    /// Remove section from [Ini].
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer([
+    ///                                    "[one]",
+    ///                                    "a = 1",
+    ///                                    "[two]",
+    ///                                    "b = 2"
+    ///                                   ].join("\n")).unwrap();
+    /// // remove section
+    /// config = config.section("one").clear();
+    /// assert_eq!(config.to_buffer(), "[two]\nb = 2");
+    ///
+    /// // clear section from old data and add new
+    /// config = config.section("two").clear().item("a", 1);
+    /// assert_eq!(config.to_buffer(), "[two]\na = 1");
+    /// ```
+    pub fn clear(mut self) -> Self {
+        self.document.remove(&self.last_section_name);
+        self
+    }
+
+    /// Remove item from section.
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let mut config = Ini::from_buffer([
+    ///                                    "[one]",
+    ///                                    "a = 1",
+    ///                                    "b = 2"
+    ///                                   ].join("\n")).unwrap();
+    ///
+    /// config = config.section("one").erase("b");
+    ///
+    /// assert_eq!(config.to_buffer(), "[one]\na = 1");
+    /// ```
+    pub fn erase(mut self, key: &str) -> Self {
+        self.document.get_mut(&self.last_section_name).and_then(|s| {s.remove(key)});
+        self
+    }
+
     /// Private method which get value by `key` from `section`
     fn get_raw(&self, section: &str, key: &str) -> Option<&String> {
-        self.document.get(section).and_then(|x| x.get(key))
+        self.document.get(section).and_then(|s| s.get(key))
     }
 
     /// Get scalar value of key in section.
@@ -345,7 +426,7 @@ impl Ini {
         self.get_raw(section, key).and_then(|x| x.parse().ok())
     }
 
-    /// Get vector value of `key` in `section`.
+    /// Get vector value of `key` in `section`. Value should use `,` as separator.
     ///
     /// The function returns [None](Option::None) if one of the elements can not be parsed.
     ///
@@ -390,114 +471,31 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// Insert `Section` or any other object who support [IntoIterator] to end of [Ini].
+    /// An iterator visiting all key-value pairs in order of appearance in section.
     ///
-    /// If [Ini](Ini) already has a section with `key` name, it will be overwritten.
-    ///
-    /// - `key` must support [Into] to [String]
-    /// - `value` msut support [IntoIterator] trait
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// use std::collections::HashMap;
-    ///
-    /// let mut conf = Ini::from_buffer("[a]\na = 1\n[b]\nb = 2").unwrap();
-    ///
-    /// // remove section from `conf`
-    /// let mut section = conf.remove_section("a").unwrap();
-    /// // add new value to removed section
-    /// section.insert("c".to_string(), "4".to_string());
-    /// // and insert again to `conf`
-    /// conf.insert_section("mod_a", section);
-    ///
-    /// // create custom section
-    /// let mut numbers = HashMap::new();
-    /// numbers.insert("round_pi", 3);
-    /// /// and add to `conf`
-    /// conf.insert_section("numbers", numbers);
-    ///
-    /// assert_eq!(conf.get::<u8>("a", "a"), None);
-    /// assert_eq!(conf.get::<u8>("mod_a", "c"), Some(4));
-    /// assert_eq!(conf.get::<u8>("numbers", "round_pi"), Some(3));
-    /// ```
-    pub fn insert_section<K, V, I, S>(&mut self, key: I, section: S)
-    where
-        K: fmt::Display + Eq + Hash,
-        V: fmt::Display,
-        I: Into<String>,
-        S: IntoIterator<Item = (K, V)>,
-    {
-        self.last_section_name = key.into();
-        let mut new_section = OrderedHashMap::new();
-        for (k, v) in section.into_iter() {
-            new_section.insert(k.to_string(), v.to_string());
-        }
-        self.document.insert(self.last_section_name.clone(), new_section);
-    }
-
-    /// Remove section from [Ini] and return it.
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\n[two]\nb = 2").unwrap();
-    ///
-    /// let section = config.remove_section("one").unwrap();
-    ///
-    /// assert_eq!(section.get("a"), Some(&"1".to_string()));
-    /// assert_eq!(config.get::<u8>("one", "a"), None);
-    /// assert_eq!(config.get::<u8>("two", "b"), Some(2));
-    /// ```
-    pub fn remove_section<S: Into<String>>(&mut self, section: S) -> Option<Section> {
-        let section = section.into();
-        self.document.remove(&section)
-    }
-
-    /// Remove item from section and return it.
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer("[one]\na = 1\nb = 2").unwrap();
-    ///
-    /// let item = config.remove_item("one", "b");
-    ///
-    /// assert_eq!(item, Some("2".to_string()));
-    /// assert_eq!(config.get::<u8>("one", "a"), Some(1));
-    /// assert_eq!(config.get::<u8>("one", "b"), None);
-    /// ```
-    pub fn remove_item<K: Into<String>>(&mut self, section: K, key: K) -> Option<String> {
-        let section = section.into();
-        let key = key.into();
-        if let Some(sec) = self.document.get_mut(&section) {
-            sec.remove(&key)
-        } else {
-            None
-        }
-    }
-
-    /// Iterate over a section by a name.
+    /// If section with given name doesn't exist in document, method returns empty iterator
     ///
     /// # Example
     /// ```
     /// # use tini::Ini;
     /// let conf = Ini::from_buffer(["[search]",
-    ///                         "g = google.com",
-    ///                         "dd = duckduckgo.com"].join("\n")).unwrap();
+    ///                              "g = google.com",
+    ///                              "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
-    /// let search = conf.iter_section("search").unwrap();
-    /// for (k, v) in search {
-    ///     println!("key: {} value: {}", k, v);
-    /// }
+    /// let mut search = conf.section_iter("search");
+    /// assert_eq!(search.next(), Some((&"g".to_string(), &"google.com".to_string())));
+    /// assert_eq!(search.next(), Some((&"dd".to_string(), &"duckduckgo.com".to_string())));
+    /// assert_eq!(search.next(), None);
+    ///
+    /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
-    pub fn iter_section(&self, section: &str) -> Option<SectionIter> {
-        self.document.get(section).map(|value| value.iter())
+    pub fn section_iter(&self, section: &str) -> SectionIter {
+        SectionIter { iter: self.document.get(section).unwrap_or(&self.empty_section).iter() }
     }
 
-    /// Iterate over all sections, yielding pairs of section name and iterator
-    /// over the section elements. The concrete iterator element type is
-    /// `(&'a String, ordered_hashmap::Iter<'a, String, String>)`.
+    /// Iterate over all sections in order of appearance, yielding pairs of
+    /// section name and iterator over the section elements. The iterator
+    /// element type is `(&'a String, SectionIter<'a>)`.
     ///
     /// # Example
     /// ```
@@ -508,18 +506,20 @@ impl Ini {
     ///                      .section("bar")
     ///                      .item("one", "1");
     ///
-    /// for (section, iter) in conf.iter() {
-    ///     for (key, val) in iter {
-    ///         println!("section: {} key: {} val: {}", section, key, val);
+    /// for (name, section_iter) in conf.iter() {
+    ///     match name.as_str() {
+    ///         "foo" => assert_eq!(section_iter.count(), 2),
+    ///         "bar" => assert_eq!(section_iter.count(), 1),
+    ///         _ => assert!(false),
     ///     }
     /// }
     pub fn iter(&self) -> IniIter {
         IniIter { iter: self.document.iter() }
     }
 
-    /// Iterate over all sections, yielding pairs of section name and mutable
+    /// Iterate over all sections in arbitrary order, yielding pairs of section name and mutable
     /// iterator over the section elements. The concrete iterator element type is
-    /// `(&'a String, ordered_hashmap::IterMut<'a, String, String>)`.
+    /// `(&'a String, SectionIterMut<'a>)`.
     ///
     /// # Example
     /// ```
@@ -530,9 +530,15 @@ impl Ini {
     ///                          .section("bar")
     ///                          .item("one", "1");
     ///
-    /// for (section, iter_mut) in conf.iter_mut() {
-    ///     for (key, val) in iter_mut {
+    /// for (name, section_iter) in conf.iter_mut() {
+    ///     for (key, val) in section_iter {
     ///         *val = String::from("replaced");
+    ///     }
+    /// }
+    ///
+    /// for (name, section_iter) in conf.iter() {
+    ///     for (key, val) in section_iter {
+    ///         assert_eq!(val.as_str(), "replaced");
     ///     }
     /// }
     pub fn iter_mut(&mut self) -> IniIterMut {
@@ -543,9 +549,9 @@ impl Ini {
 impl fmt::Display for Ini {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut buffer = String::new();
-        for (section, iter) in self.iter() {
-            buffer.push_str(&format!("[{}]\n", section));
-            for (key, value) in iter {
+        for (name, section) in self.iter() {
+            buffer.push_str(&format!("[{}]\n", name));
+            for (key, value) in section {
                 buffer.push_str(&format!("{} = {}\n", key, value));
             }
             // blank line between sections
@@ -564,8 +570,9 @@ impl Default for Ini {
     }
 }
 
-#[doc(hidden)]
+/// An iterator over the sections of an ini documet
 pub struct IniIter<'a> {
+    #[doc(hidden)]
     iter: ordered_hashmap::Iter<'a, String, Section>,
 }
 
@@ -574,12 +581,13 @@ impl<'a> Iterator for IniIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(string, section)| (string, section.iter()))
+        self.iter.next().map(|(name, section)| (name, SectionIter { iter: section.iter() }))
     }
 }
 
-#[doc(hidden)]
+/// A mutable iterator over the sections of an ini documet
 pub struct IniIterMut<'a> {
+    #[doc(hidden)]
     iter: ordered_hashmap::IterMut<'a, String, Section>,
 }
 
@@ -588,14 +596,43 @@ impl<'a> Iterator for IniIterMut<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(string, section)| (string, section.iter_mut()))
+        self.iter.next().map(|(name, section)| (name, SectionIterMut { iter: section.iter_mut() }))
+    }
+}
+
+type Section = OrderedHashMap<String, String>;
+
+/// An iterator over the entries of a section
+pub struct SectionIter<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::Iter<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIter<'a> {
+    type Item = (&'a String, &'a String);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+/// A mutable iterator over the entries of a section
+pub struct SectionIterMut<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::IterMut<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIterMut<'a> {
+    type Item = (&'a String, &'a mut String);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
     }
 }
 
 #[cfg(test)]
 mod library_test {
     use super::*;
-    use crate::error::Error;
 
     #[test]
     fn bool() -> Result<(), Error> {
@@ -661,20 +698,12 @@ mod library_test {
     }
 
     #[test]
-    fn ordering_keys() -> Result<(), Error> {
-        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3")?;
-        let keys: Vec<&String> = ini.document.get("a").unwrap().keys().collect();
-        assert_eq!(["c", "b", "a"], keys[..]);
-        Ok(())
-    }
-
-    #[test]
     fn mutating() {
         let mut config = Ini::new().section("items").item("a", "1").item("b", "2").item("c", "3");
 
         // mutate items
-        for (_, item) in config.iter_mut() {
-            for (_, value) in item {
+        for (_, iter) in config.iter_mut() {
+            for (_, value) in iter {
                 let v: i32 = value.parse().unwrap();
                 *value = format!("{}", v + 1);
             }
@@ -728,12 +757,9 @@ mod library_test {
     #[test]
     fn remove_section() {
         let mut config = Ini::new().section("one").item("a", "1").section("two").item("b", "2");
-        let section = match config.remove_section("one") {
-            Some(value) => value,
-            None => panic!("section not found"),
-        };
 
-        assert_eq!(section.get("a"), Some(&"1".to_string()));
+        config = config.section("one").clear();
+
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("two", "b"), Some(2));
     }
@@ -741,9 +767,9 @@ mod library_test {
     #[test]
     fn remove_item() {
         let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
-        let item = config.remove_item("one", "a");
 
-        assert_eq!(item, Some("1".to_string()));
+        config = config.section("one").erase("a");
+
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("one", "b"), Some(2));
     }

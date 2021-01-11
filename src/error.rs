@@ -1,18 +1,24 @@
+//! Error module
 use std::error;
 use std::fmt;
 use std::io;
 
 #[derive(Debug)]
 pub enum Error {
+    // io errors
     Io(io::Error),
+    // parsing errors
     Parse(ParseError),
 }
 
+/// Enum for storing one of the possible errors code
 #[derive(Debug)]
 pub enum ParseError {
+    // section has incorrect syntax
     IncorrectSection(usize),
+    // unknown syntax format
     IncorrectSyntax(usize),
-    NoneKey(usize),
+    // key has empty name
     EmptyKey(usize),
 }
 
@@ -33,7 +39,6 @@ impl fmt::Display for ParseError {
         match self {
             ParseError::IncorrectSection(line) => write!(f, "Incorrect section syntax at line {}", line),
             ParseError::IncorrectSyntax(line) => write!(f, "Incorrect syntax at line {}", line),
-            ParseError::NoneKey(line) => write!(f, "Key is None at line {}", line),
             ParseError::EmptyKey(line) => write!(f, "Key is empty at line {}", line),
         }
     }

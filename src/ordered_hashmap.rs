@@ -7,6 +7,7 @@ use std::borrow::Borrow;
 use std::collections::hash_map::{self, Entry};
 use std::collections::HashMap;
 use std::hash::Hash;
+use std::iter::FromIterator;
 use std::iter::IntoIterator;
 
 /// Ordered hashmap built on top of std::collections::HashMap
@@ -81,6 +82,14 @@ where
         self.base.get_mut(k)
     }
 
+    pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
+    where
+        K: Borrow<Q>,
+        Q: Hash + Eq,
+    {
+        self.base.contains_key(k)
+    }
+
     /// Inserts a key-value pair into the map.
     ///
     /// If the map did not have this key present, [`None`] is returned.
@@ -118,7 +127,11 @@ where
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    pub fn remove(&mut self, k: &K) -> Option<V> {
+    pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
+    where
+        K: Borrow<Q> + PartialEq<Q>,
+        Q: Hash + Eq,
+    {
         match self.keys.iter().position(|x| x == k) {
             Some(index) => {
                 self.keys.swap_remove(index);
@@ -249,6 +262,20 @@ where
     }
 }
 
+impl<K, V> FromIterator<(K, V)> for OrderedHashMap<K, V>
+where
+    K: Eq + Hash + Clone,
+{
+    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
+        let mut map = OrderedHashMap::new();
+
+        for (k, v) in iter {
+            map.insert(k, v);
+        }
+
+        map
+    }
+}
 /// An iterator over the entries of a `OrderedHashMap`.
 ///
 /// This `struct` is created by the `iter` method on `OrderedHashMap`.

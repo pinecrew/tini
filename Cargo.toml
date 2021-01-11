@@ -7,7 +7,7 @@ documentation = "https://docs.rs/tini"
 repository = "https://github.com/pinecrew/tini"
 keywords = ["ini", "configuration", "conf", "cfg"]
 license = "BSD-3-Clause"
-exclude = [".github/", "examples/"]
+include = ["src/*.rs", "Cargo.toml", "README.md"]
 autoexamples = true
 edition = "2018"
 

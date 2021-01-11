@@ -371,10 +371,13 @@ impl Ini {
     ///                                    "[two]",
     ///                                    "b = 2"
     ///                                   ].join("\n")).unwrap();
-    ///
+    /// // remove section
     /// config = config.section("one").clear();
-    ///
     /// assert_eq!(config.to_buffer(), "[two]\nb = 2");
+    ///
+    /// // clear section from old data and add new
+    /// config = config.section("two").clear().item("a", 1);
+    /// assert_eq!(config.to_buffer(), "[two]\na = 1");
     /// ```
     pub fn clear(mut self) -> Self {
         self.document.remove(&self.last_section_name);
@@ -392,21 +395,18 @@ impl Ini {
     ///                                    "b = 2"
     ///                                   ].join("\n")).unwrap();
     ///
-    /// config = config.section("one").remove("b");
+    /// config = config.section("one").erase("b");
     ///
     /// assert_eq!(config.to_buffer(), "[one]\na = 1");
     /// ```
-    pub fn remove<K: Into<String>>(mut self, key: K) -> Self {
-        let key = key.into();
-        if let Some(sec) = self.document.get_mut(&self.last_section_name) {
-            sec.remove(&key);
-        }
+    pub fn erase(mut self, key: &str) -> Self {
+        self.document.get_mut(&self.last_section_name).and_then(|s| {s.remove(key)});
         self
     }
 
     /// Private method which get value by `key` from `section`
     fn get_raw(&self, section: &str, key: &str) -> Option<&String> {
-        self.document.get(section).and_then(|x| x.get(key))
+        self.document.get(section).and_then(|s| s.get(key))
     }
 
     /// Get scalar value of key in section.
@@ -768,7 +768,7 @@ mod library_test {
     fn remove_item() {
         let mut config = Ini::new().section("one").item("a", "1").item("b", "2");
 
-        config = config.section("one").remove("a");
+        config = config.section("one").erase("a");
 
         assert_eq!(config.get::<u8>("one", "a"), None);
         assert_eq!(config.get::<u8>("one", "b"), Some(2));

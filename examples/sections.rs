@@ -12,7 +12,7 @@ fn main() {
 
     println!("before delete:\n-----\n{}\n-----\n", config);
 
-    config = config.section("values").clear().section("items").remove("c");
+    config = config.section("values").clear().section("items").erase("c");
 
     println!(" after delete:\n-----\n{}\n-----\n", config);
 

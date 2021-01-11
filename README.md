@@ -10,7 +10,7 @@
 Add `tini` to your `Cargo.toml`, for example:
 ```toml
 [dependencies]
-tini = "0.4"
+tini = "0.9"
 ```
 
 ## How to use

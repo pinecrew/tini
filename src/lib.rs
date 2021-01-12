@@ -400,7 +400,7 @@ impl Ini {
     /// assert_eq!(config.to_buffer(), "[one]\na = 1");
     /// ```
     pub fn erase(mut self, key: &str) -> Self {
-        self.document.get_mut(&self.last_section_name).and_then(|s| {s.remove(key)});
+        self.document.get_mut(&self.last_section_name).and_then(|s| s.remove(key));
         self
     }
 
@@ -555,7 +555,7 @@ impl fmt::Display for Ini {
                 buffer.push_str(&format!("{} = {}\n", key, value));
             }
             // blank line between sections
-            buffer.push_str("\n");
+            buffer.push('\n');
         }
         // remove last two '\n'
         buffer.pop();

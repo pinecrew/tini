@@ -49,7 +49,7 @@ pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
         };
         return Ok(Parsed::Value(key, value));
     }
-    return Err(ParseError::IncorrectSyntax(index));
+    Err(ParseError::IncorrectSyntax(index))
 }
 
 #[cfg(test)]

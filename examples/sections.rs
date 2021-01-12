@@ -13,11 +13,7 @@ fn main() {
         // create another
         .section("values")
         // and add multiple values at a time
-        .items(vec![
-            ("d", 4),
-            ("e", 5),
-            ("f", 6),
-        ]);
+        .items(vec![("d", 4), ("e", 5), ("f", 6)]);
 
     println!("before delete:\n-----\n{}\n-----\n", config);
 

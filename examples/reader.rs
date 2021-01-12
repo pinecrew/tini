@@ -8,7 +8,7 @@ fn main() {
     let f = File::open("./examples/example.ini").unwrap();
     // Create reader from file
     let mut reader = BufReader::new(f);
-    // Create config from BufReadear 
+    // Create config from BufReadear
     let config = Ini::from_reader(&mut reader).unwrap();
     // Serialize to stdout
     println!("{}", config);

@@ -1,4 +1,4 @@
-# tini &mdash; A tiny INI parsing library, written in Rust
+# tini &mdash; A tiny INI parsing library
 
 ![Rust](https://github.com/pinecrew/tini/workflows/Rust/badge.svg)
 [![Crates](https://img.shields.io/crates/v/tini.svg)](https://crates.io/crates/tini)
@@ -44,12 +44,12 @@ use tini::Ini;
 
 fn main() {
     // Create ini structure
-    let conf = Ini::new()                                  // initialize Ini
-                   .section("params")                      // create `params` section
-                   .item("pi", "3.14")                     // add `pi` key
-                   .item("lost", "4, 8, 15, 16, 23, 42") // add `lost` list
-                   .section("other")                       // create another section
-                   .item("default", "hello world!");       // add `default` key to `other` section
+    let conf = Ini::new()                                          // initialize Ini
+                   .section("params")                              // create `params` section
+                   .item("pi", 3.14)                               // add `pi` key
+                   .item_vec("lost", vec![4, 8, 15, 16, 23, 42])   // add `lost` list
+                   .section("other")                               // create another section
+                   .item("default", "hello world!");               // add `default` key to `other` section
     // At any time you can add new parameters to the last created section
     // < some code >
     // Now write ini structure to file
@@ -66,4 +66,4 @@ fn main() {
 }
 ```
 
-See more in [examples](./examples) folder or in [documentation](https://docs.rs/tini).
+See more in [examples](./examples) folder and in [documentation](https://docs.rs/tini).

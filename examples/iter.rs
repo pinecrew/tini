@@ -18,6 +18,5 @@ fn main() {
         }
     }
 
-    let result = config.to_buffer();
-    println!("\n--- serialize to ini ---\n{}---", result);
+    println!("\n--- serialize to ini ---\n{}---", config);
 }

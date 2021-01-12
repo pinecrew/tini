@@ -5,17 +5,17 @@
 //! Features:
 //!
 //! * no dependencies;
-//! * parsing [from file](Ini::from_file), [from reader](Ini::from_reader) and [from buffer](Ini::from_buffer);
+//! * parsing [from file](Ini::from_file), [from reader](Ini::from_reader) and [from string](Ini::from_string);
 //! * [convert parsed value to given type](Ini::get);
 //! * [parse comma-separated lists to vectors](Ini::get_vec);
 //! * construct new ini-structure with [method chaining](Ini::item);
-//! * writing [to file](Ini::to_file), [to writer](Ini::to_writer) and [to buffer](Ini::to_buffer).
+//! * writing [to file](Ini::to_file), [to writer](Ini::to_writer) and [to string](Ini#impl-Display).
 //!
 //! # Examples
 //! ## Read from buffer and get string values
 //! ````
 //! # use tini::Ini;
-//! let conf = Ini::from_buffer(["[search]",
+//! let conf = Ini::from_string(["[search]",
 //!                              "g = google.com",
 //!                              "dd = duckduckgo.com"].join("\n")).unwrap();
 //!
@@ -70,7 +70,7 @@ impl Ini {
     }
 
     /// Private construct method which creaate [Ini] struct from input string
-    fn from_string(string: &str) -> Result<Ini, Error> {
+    fn parse(string: &str) -> Result<Ini, Error> {
         let mut result = Ini::new();
         for (index, line) in string.lines().enumerate() {
             match parse_line(&line, index)? {
@@ -135,10 +135,10 @@ impl Ini {
     pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, Error> {
         let mut buffer = String::new();
         reader.read_to_string(&mut buffer)?;
-        Ini::from_string(&buffer)
+        Ini::parse(&buffer)
     }
 
-    /// Construct Ini from buffer which can be [Into]ed to String
+    /// Construct Ini from any type of string which can be [Into]ed to String
     ///
     /// # Errors
     /// This function will return an [Error] if buffer cannot be parsed
@@ -146,13 +146,13 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
+    /// let conf = Ini::from_string("[section]\none = 1").unwrap();
     ///
     /// let value: Option<u8> = conf.get("section", "one");
     /// assert_eq!(value, Some(1));
     /// ```
-    pub fn from_buffer<S: Into<String>>(buf: S) -> Result<Ini, Error> {
-        Ini::from_string(&buf.into())
+    pub fn from_string<S: Into<String>>(buf: S) -> Result<Ini, Error> {
+        Ini::parse(&buf.into())
     }
 
     /// Write Ini to file. This function is similar to [from_file](Ini::from_file) in use.
@@ -185,31 +185,8 @@ impl Ini {
     /// assert_eq!(casted_result, "[a]\na = 1")
     /// ```
     pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
-        writer.write_all(self.to_buffer().as_bytes())?;
+        writer.write_all(self.to_string().as_bytes())?;
         Ok(())
-    }
-
-    /// Write [Ini] to buffer (similar to `to_string()`)
-    ///
-    /// # Example
-    /// ```
-    /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
-    ///
-    /// // you may use `conf.to_buffer()`
-    /// let value: String = conf.to_buffer();
-    ///
-    /// // or conf.to_string();
-    /// let value = conf.to_string();
-    ///
-    /// // or format!("{}", conf);
-    /// let value: String = format!("{}", conf);
-    ///
-    /// // but the result will be the same
-    /// assert_eq!(value, "[section]\none = 1");
-    /// ```
-    pub fn to_buffer(&self) -> String {
-        self.to_string()
     }
 
     /// Set section name for the following methods in chain ([`item()`](Ini::item), [`items()`](Ini::items), etc.)
@@ -221,11 +198,11 @@ impl Ini {
     /// ```
     /// # use tini::Ini;
     /// let mut conf = Ini::new().section("empty");
-    /// assert_eq!(conf.to_buffer(), "");
+    /// assert_eq!(conf.to_string(), "");
     ///
     /// // but section will be created on item() call
     /// conf = conf.section("one").item("a", 1);
-    /// assert_eq!(conf.to_buffer(), "[one]\na = 1");
+    /// assert_eq!(conf.to_string(), "[one]\na = 1");
     /// ```
     pub fn section<S: Into<String>>(mut self, name: S) -> Self {
         self.last_section_name = name.into();
@@ -243,7 +220,7 @@ impl Ini {
     /// let conf = Ini::new().section("test")
     ///                      .item("value", 10);
     ///
-    /// assert_eq!(conf.to_buffer(), "[test]\nvalue = 10");
+    /// assert_eq!(conf.to_string(), "[test]\nvalue = 10");
     /// ```
     pub fn item<N, V>(mut self, name: N, value: V) -> Self
     where
@@ -339,7 +316,7 @@ impl Ini {
     /// // and add to `conf`
     /// conf = conf.section("numbers").items(numbers);
     ///
-    /// assert_eq!(conf.to_buffer(), [
+    /// assert_eq!(conf.to_string(), [
     ///                               "[colors]",
     ///                               "black = #000000",
     ///                               "white = #ffffff",
@@ -365,7 +342,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer([
+    /// let mut config = Ini::from_string([
     ///                                    "[one]",
     ///                                    "a = 1",
     ///                                    "[two]",
@@ -373,11 +350,11 @@ impl Ini {
     ///                                   ].join("\n")).unwrap();
     /// // remove section
     /// config = config.section("one").clear();
-    /// assert_eq!(config.to_buffer(), "[two]\nb = 2");
+    /// assert_eq!(config.to_string(), "[two]\nb = 2");
     ///
     /// // clear section from old data and add new
     /// config = config.section("two").clear().item("a", 1);
-    /// assert_eq!(config.to_buffer(), "[two]\na = 1");
+    /// assert_eq!(config.to_string(), "[two]\na = 1");
     /// ```
     pub fn clear(mut self) -> Self {
         self.document.remove(&self.last_section_name);
@@ -389,7 +366,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let mut config = Ini::from_buffer([
+    /// let mut config = Ini::from_string([
     ///                                    "[one]",
     ///                                    "a = 1",
     ///                                    "b = 2"
@@ -397,7 +374,7 @@ impl Ini {
     ///
     /// config = config.section("one").erase("b");
     ///
-    /// assert_eq!(config.to_buffer(), "[one]\na = 1");
+    /// assert_eq!(config.to_string(), "[one]\na = 1");
     /// ```
     pub fn erase(mut self, key: &str) -> Self {
         self.document.get_mut(&self.last_section_name).and_then(|s| s.remove(key));
@@ -416,7 +393,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\none = 1").unwrap();
+    /// let conf = Ini::from_string("[section]\none = 1").unwrap();
     ///
     /// let value: Option<u8> = conf.get("section", "one");
     ///
@@ -435,7 +412,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\nlist = 1, 2, 3, 4").unwrap();
+    /// let conf = Ini::from_string("[section]\nlist = 1, 2, 3, 4").unwrap();
     ///
     /// let value: Option<Vec<u8>> = conf.get_vec("section", "list");
     ///
@@ -457,7 +434,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer("[section]\nlist = 1|2|3|4").unwrap();
+    /// let conf = Ini::from_string("[section]\nlist = 1|2|3|4").unwrap();
     ///
     /// let value: Option<Vec<u8>> = conf.get_vec_with_sep("section", "list", "|");
     ///
@@ -478,7 +455,7 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::from_buffer(["[search]",
+    /// let conf = Ini::from_string(["[search]",
     ///                              "g = google.com",
     ///                              "dd = duckduckgo.com"].join("\n")).unwrap();
     ///
@@ -638,7 +615,7 @@ mod library_test {
 
     #[test]
     fn bool() -> Result<(), Error> {
-        let ini = Ini::from_buffer("[string]\nabc = true")?;
+        let ini = Ini::from_string("[string]\nabc = true")?;
         let abc: Option<bool> = ini.get("string", "abc");
         assert_eq!(abc, Some(true));
         Ok(())

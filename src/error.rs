@@ -3,6 +3,7 @@ use std::error;
 use std::fmt;
 use std::io;
 
+/// Error type for parsing and I/O errors
 #[derive(Debug)]
 pub enum Error {
     // io errors

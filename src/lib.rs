@@ -39,11 +39,11 @@
 //! assert_eq!(consts, [3.1416, 2.7183]);
 //! assert_eq!(lost, [4, 8, 15, 16, 23, 42]);
 //! ````
-pub mod error;
+mod error;
 mod ordered_hashmap;
 mod parser;
 
-use error::Error;
+pub use error::{Error, ParseError};
 use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;

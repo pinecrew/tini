@@ -3,23 +3,24 @@ use std::error;
 use std::fmt;
 use std::io;
 
-/// Error type for parsing and I/O errors
+/// Options for possible errors that may arise
 #[derive(Debug)]
 pub enum Error {
-    // io errors
+    /// Standard I/O errors
     Io(io::Error),
-    // parsing errors
+    /// Parsing errors
     Parse(ParseError),
 }
 
-/// Enum for storing one of the possible errors code
+/// Enum for storing one of the possible errors code.
+/// The associated value represents the row index where the error occurred.
 #[derive(Debug)]
 pub enum ParseError {
-    // section has incorrect syntax
+    /// Section has incorrect syntax
     IncorrectSection(usize),
-    // unknown syntax format
+    /// Unknown syntax format
     IncorrectSyntax(usize),
-    // key has empty name
+    /// Key has empty name
     EmptyKey(usize),
 }
 

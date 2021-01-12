@@ -7,11 +7,11 @@ use crate::error::ParseError;
 /// Enum for storing one of 4 possible `parse_line` results
 #[derive(Debug)]
 pub enum Parsed {
-    // empty line
+    /// empty line
     Empty,
-    // [section]
+    /// [section]
     Section(String),
-    // item = value
+    /// item = value
     Value(String, String),
 }
 

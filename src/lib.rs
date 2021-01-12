@@ -548,19 +548,21 @@ impl Ini {
 
 impl fmt::Display for Ini {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut buffer = String::new();
+        let mut items = Vec::new();
         for (name, section) in self.iter() {
-            buffer.push_str(&format!("[{}]\n", name));
+            // insert section block
+            items.push(format!("[{}]", name));
+            // and all items
             for (key, value) in section {
-                buffer.push_str(&format!("{} = {}\n", key, value));
+                items.push(format!("{} = {}", key, value));
             }
-            // blank line between sections
-            buffer.push('\n');
+            // and add empty item
+            items.push("".to_string());
         }
-        // remove last two '\n'
-        buffer.pop();
-        buffer.pop();
-        write!(f, "{}", buffer)
+        // remoe last item
+        items.pop();
+        // and join all items
+        write!(f, "{}", items.join("\n"))
     }
 }
 

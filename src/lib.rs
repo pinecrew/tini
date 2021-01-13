@@ -534,16 +534,16 @@ impl fmt::Display for Ini {
         for (name, section) in self.iter() {
             // insert section block
             items.push(format!("[{}]", name));
-            // and all items
+            // add items
             for (key, value) in section {
                 items.push(format!("{} = {}", key, value));
             }
-            // and add empty item
+            // and blank line between sections
             items.push("".to_string());
         }
-        // remoe last item
+        // remove newline at the end of file
         items.pop();
-        // and join all items
+
         write!(f, "{}", items.join("\n"))
     }
 }

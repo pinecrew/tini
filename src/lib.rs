@@ -209,7 +209,8 @@ impl Ini {
         self
     }
 
-    /// Add key-value pair to the end of section, specified in last [`section()`](Ini::section) call.
+    /// Add key-value pair to the end of section, specified in last [`section()`](Ini::section) call,
+    /// or replace value if key already in section
     ///
     /// - `name` must support [Into] to [String]
     /// - `value` must support [Display](fmt::Display) to support conversion to [String]
@@ -217,10 +218,14 @@ impl Ini {
     /// # Example
     /// ```
     /// # use tini::Ini;
-    /// let conf = Ini::new().section("test")
+    /// let mut conf = Ini::new().section("test")
     ///                      .item("value", 10);
     ///
     /// assert_eq!(conf.to_string(), "[test]\nvalue = 10");
+    ///
+    /// // change existing value
+    /// conf = conf.section("test").item("value", "updated");
+    /// assert_eq!(conf.to_string(), "[test]\nvalue = updated");
     /// ```
     pub fn item<N, V>(mut self, name: N, value: V) -> Self
     where
@@ -674,73 +679,5 @@ mod library_test {
         let keys: Vec<&String> = ini.document.get("a").unwrap().iter().map(|(k, _)| k).collect();
         assert_eq!(["c", "b", "a"], keys[..]);
         Ok(())
-    }
-
-    #[test]
-    fn mutating() {
-        let mut config = Ini::new().section("items").item("a", 1).item("b", 2).item("c", 3);
-
-        // mutate items
-        for (_, iter) in config.iter_mut() {
-            for (_, value) in iter {
-                let v: i32 = value.parse().unwrap();
-                *value = format!("{}", v + 1);
-            }
-        }
-
-        let a_val: Option<u8> = config.get("items", "a");
-        let b_val: Option<u8> = config.get("items", "b");
-        let c_val: Option<u8> = config.get("items", "c");
-
-        assert_eq!(a_val, Some(2));
-        assert_eq!(b_val, Some(3));
-        assert_eq!(c_val, Some(4));
-    }
-
-    #[test]
-    fn redefine_item() {
-        let config = Ini::new().section("items").item("one", 3).item("two", 2).item("one", 1);
-
-        let one: Option<i32> = config.get("items", "one");
-        assert_eq!(one, Some(1));
-    }
-
-    #[test]
-    fn redefine_section() {
-        let config = Ini::new().section("one").item("a", 1).section("two").item("b", 2).section("one").item("c", 3);
-
-        let a_val: Option<i32> = config.get("one", "a");
-        let c_val: Option<i32> = config.get("one", "c");
-
-        assert_eq!(a_val, Some(1));
-        assert_eq!(c_val, Some(3));
-    }
-
-    #[test]
-    fn use_item_vec() {
-        let config = Ini::new().section("default").item_vec_with_sep("a", &["a,b", "c,d", "e"], "|");
-
-        let v: Vec<String> = config.get_vec_with_sep("default", "a", "|").unwrap();
-        assert_eq!(v, [r"a,b", "c,d", "e"]);
-    }
-
-    #[test]
-    fn remove_section() {
-        let mut config = Ini::new().section("one").item("a", 1).section("two").item("b", 2);
-
-        config = config.section("one").clear();
-
-        assert_eq!(config.get::<u8>("one", "a"), None);
-        assert_eq!(config.get::<u8>("two", "b"), Some(2));
-    }
-
-    #[test]
-    fn remove_item() {
-        let mut config = Ini::new().section("one").item("a", 1).item("b", 2);
-
-        config = config.section("one").erase("a");
-
-        assert_eq!(config.get::<u8>("one", "a"), None);
-        assert_eq!(config.get::<u8>("one", "b"), Some(2));
     }
 }

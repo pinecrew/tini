@@ -48,7 +48,6 @@ use ordered_hashmap::OrderedHashMap;
 use parser::{parse_line, Parsed};
 use std::fmt;
 use std::fs::File;
-use std::hash::Hash;
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::iter::Iterator;
 use std::path::Path;
@@ -332,7 +331,7 @@ impl Ini {
     /// ```
     pub fn items<K, V, I>(mut self, items: I) -> Self
     where
-        K: fmt::Display + Eq + Hash,
+        K: fmt::Display,
         V: fmt::Display,
         I: IntoIterator<Item = (K, V)>,
     {

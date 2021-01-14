@@ -107,7 +107,10 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_file<S: AsRef<Path> + ?Sized>(path: &S) -> Result<Ini, Error> {
+    pub fn from_file<S>(path: &S) -> Result<Ini, Error>
+    where
+        S: AsRef<Path> + ?Sized,
+    {
         let file = File::open(path)?;
         let mut reader = BufReader::new(file);
         Ini::from_reader(&mut reader)
@@ -131,7 +134,10 @@ impl Ini {
     ///
     /// assert!(conf.ok().is_some());
     /// ```
-    pub fn from_reader<R: Read>(reader: &mut R) -> Result<Ini, Error> {
+    pub fn from_reader<R>(reader: &mut R) -> Result<Ini, Error>
+    where
+        R: Read,
+    {
         let mut buffer = String::new();
         reader.read_to_string(&mut buffer)?;
         Ini::parse(&buffer)
@@ -150,7 +156,10 @@ impl Ini {
     /// let value: Option<u8> = conf.get("section", "one");
     /// assert_eq!(value, Some(1));
     /// ```
-    pub fn from_string<S: Into<String>>(buf: S) -> Result<Ini, Error> {
+    pub fn from_string<S>(buf: S) -> Result<Ini, Error>
+    where
+        S: Into<String>,
+    {
         Ini::parse(&buf.into())
     }
 
@@ -158,7 +167,10 @@ impl Ini {
     ///
     /// # Errors
     /// Errors returned by [File::create] and [Write::write_all]
-    pub fn to_file<S: AsRef<Path> + ?Sized>(&self, path: &S) -> Result<(), io::Error> {
+    pub fn to_file<S>(&self, path: &S) -> Result<(), io::Error>
+    where
+        S: AsRef<Path> + ?Sized,
+    {
         let file = File::create(path)?;
         let mut writer = BufWriter::new(file);
         self.to_writer(&mut writer)
@@ -183,7 +195,10 @@ impl Ini {
     /// let casted_result = String::from_utf8(output).unwrap();
     /// assert_eq!(casted_result, "[a]\na = 1")
     /// ```
-    pub fn to_writer<W: Write>(&self, writer: &mut W) -> Result<(), io::Error> {
+    pub fn to_writer<W>(&self, writer: &mut W) -> Result<(), io::Error>
+    where
+        W: Write,
+    {
         writer.write_all(self.to_string().as_bytes())?;
         Ok(())
     }
@@ -203,7 +218,10 @@ impl Ini {
     /// conf = conf.section("one").item("a", 1);
     /// assert_eq!(conf.to_string(), "[one]\na = 1");
     /// ```
-    pub fn section<S: Into<String>>(mut self, name: S) -> Self {
+    pub fn section<S>(mut self, name: S) -> Self
+    where
+        S: Into<String>,
+    {
         self.last_section_name = name.into();
         self
     }
@@ -403,7 +421,10 @@ impl Ini {
     ///
     /// assert_eq!(value, Some(1));
     /// ```
-    pub fn get<T: FromStr>(&self, section: &str, key: &str) -> Option<T> {
+    pub fn get<T>(&self, section: &str, key: &str) -> Option<T>
+    where
+        T: FromStr,
+    {
         self.get_raw(section, key).and_then(|x| x.parse().ok())
     }
 

@@ -72,7 +72,7 @@ impl Ini {
     fn parse(string: &str) -> Result<Ini, Error> {
         let mut result = Ini::new();
         for (index, line) in string.lines().enumerate() {
-            match parse_line(&line, index)? {
+            match parse_line(&line, index + 1)? {
                 Parsed::Section(name) => result = result.section(name),
                 Parsed::Value(name, value) => result = result.item(name, value),
                 _ => (),
@@ -639,6 +639,30 @@ mod library_test {
         let name: Option<Vec<f64>> = ini.get_vec("section", "name");
         assert_eq!(name, Some(vec![1.2, 3.4, 5.6]));
         Ok(())
+    }
+
+    #[test]
+    fn empty_key() {
+        match Ini::from_string("[a]\nx = 1\n=2") {
+            Err(Error::Parse(ParseError::EmptyKey(index))) => assert_eq!(index, 3),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn invalid_section() {
+        match Ini::from_string("[a]\nx = 1\ny = 2\n[b") {
+            Err(Error::Parse(ParseError::IncorrectSection(index))) => assert_eq!(index, 4),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn invalid_syntax() {
+        match Ini::from_string("[a]\n\t- b") {
+            Err(Error::Parse(ParseError::IncorrectSyntax(index))) => assert_eq!(index, 2),
+            _ => assert!(false),
+        }
     }
 
     #[test]

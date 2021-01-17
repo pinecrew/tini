@@ -561,9 +561,6 @@ impl fmt::Display for Ini {
             // and blank line between sections
             items.push("".to_string());
         }
-        // remove newline at the end of file
-        items.pop();
-
         write!(f, "{}", items.join("\n"))
     }
 }

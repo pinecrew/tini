@@ -7,11 +7,11 @@ use crate::error::ParseError;
 /// Enum for storing one of 4 possible `parse_line` results
 #[derive(Debug)]
 pub enum Parsed {
-    // empty line
+    /// empty line
     Empty,
-    // [section]
+    /// [section]
     Section(String),
-    // item = value
+    /// item = value
     Value(String, String),
 }
 
@@ -49,7 +49,7 @@ pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
         };
         return Ok(Parsed::Value(key, value));
     }
-    return Err(ParseError::IncorrectSyntax(index));
+    Err(ParseError::IncorrectSyntax(index))
 }
 
 #[cfg(test)]
@@ -58,7 +58,7 @@ mod test {
     use crate::error::Error;
 
     #[test]
-    fn test_comment() -> Result<(), Error> {
+    fn comment() -> Result<(), Error> {
         match parse_line(";------", 0)? {
             Parsed::Empty => assert!(true),
             _ => assert!(false),
@@ -67,7 +67,7 @@ mod test {
     }
 
     #[test]
-    fn test_entry() -> Result<(), Error> {
+    fn entry() -> Result<(), Error> {
         match parse_line("name1 = 100 ; comment", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("name1"));
@@ -79,7 +79,16 @@ mod test {
     }
 
     #[test]
-    fn test_weird_name() -> Result<(), Error> {
+    fn section() -> Result<(), Error> {
+        match parse_line("[section]", 0)? {
+            Parsed::Section(name) => assert_eq!(name, String::from("section")),
+            _ => assert!(false),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn weird_name() -> Result<(), Error> {
         match parse_line("_.,:(){}-#@&*| = 100", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("_.,:(){}-#@&*|"));
@@ -91,7 +100,16 @@ mod test {
     }
 
     #[test]
-    fn test_text_entry() -> Result<(), Error> {
+    fn weird_section() -> Result<(), Error> {
+        match parse_line("[[abc]] ; omg", 0)? {
+            Parsed::Section(name) => assert_eq!(name, String::from("abc")),
+            _ => assert!(false),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn text_entry() -> Result<(), Error> {
         match parse_line("text_name = hello world!", 0)? {
             Parsed::Value(name, text) => {
                 assert_eq!(name, String::from("text_name"));
@@ -103,7 +121,7 @@ mod test {
     }
 
     #[test]
-    fn test_incorrect_token() {
+    fn incorrect_token() {
         match parse_line("[section = 1, 2 = value", 0) {
             Err(_) => assert!(true),
             _ => assert!(false),
@@ -111,10 +129,42 @@ mod test {
     }
 
     #[test]
-    fn test_incorrect_key_value_line() {
+    fn empty_key() {
         match parse_line("= 3", 0) {
             Err(_) => assert!(true),
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn empty_kv() {
+        match parse_line("=", 0) {
+            Err(_) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn empty_value() -> Result<(), Error> {
+        match parse_line("a =", 0)? {
+            Parsed::Value(key, value) => {
+                assert_eq!(key, String::from("a"));
+                assert_eq!(value.len(), 0);
+            }
+            _ => assert!(false),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn empty_value_with_comment() -> Result<(), Error> {
+        match parse_line("a = ; comment line", 0)? {
+            Parsed::Value(key, value) => {
+                assert_eq!(key, String::from("a"));
+                assert_eq!(value.len(), 0);
+            }
+            _ => assert!(false),
+        }
+        Ok(())
     }
 }

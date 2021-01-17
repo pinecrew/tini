@@ -349,12 +349,12 @@ impl Ini {
     /// ```
     pub fn items<K, V, I>(mut self, items: I) -> Self
     where
-        K: fmt::Display,
+        K: Into<String>,
         V: fmt::Display,
         I: IntoIterator<Item = (K, V)>,
     {
         for (k, v) in items {
-            self = self.item(k.to_string(), v.to_string());
+            self = self.item(k.into(), v.to_string());
         }
         self
     }

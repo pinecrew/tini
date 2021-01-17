@@ -89,10 +89,10 @@ impl Ini {
     /// # Examples
     /// You may use [Path]
     ///
-    /// ```
+    /// ```no_run
     /// # use std::path::Path;
     /// # use tini::Ini;
-    /// let path = Path::new("./examples/example.ini");
+    /// let path = Path::new("example.ini");
     ///
     /// let conf = Ini::from_file(path);
     ///
@@ -101,9 +101,9 @@ impl Ini {
     ///
     /// or `&str`
     ///
-    /// ```
+    /// ```no_run
     /// # use tini::Ini;
-    /// let conf = Ini::from_file("./examples/example.ini");
+    /// let conf = Ini::from_file("example.ini");
     ///
     /// assert!(conf.ok().is_some());
     /// ```
@@ -125,9 +125,8 @@ impl Ini {
     ///
     /// ```
     /// # use std::io::BufReader;
-    /// # use std::fs::File;
     /// # use tini::Ini;
-    /// let f = File::open("./examples/example.ini").unwrap();
+    /// let f = "[section]\nitem=value".as_bytes();
     /// let mut reader = BufReader::new(f);
     ///
     /// let conf = Ini::from_reader(&mut reader);
@@ -193,7 +192,7 @@ impl Ini {
     ///
     /// // cast Vec<u8> to utf-8 string
     /// let casted_result = String::from_utf8(output).unwrap();
-    /// assert_eq!(casted_result, "[a]\na = 1")
+    /// assert_eq!(casted_result, "[a]\na = 1\n")
     /// ```
     pub fn to_writer<W>(&self, writer: &mut W) -> Result<(), io::Error>
     where
@@ -216,7 +215,7 @@ impl Ini {
     ///
     /// // but section will be created on item() call
     /// conf = conf.section("one").item("a", 1);
-    /// assert_eq!(conf.to_string(), "[one]\na = 1");
+    /// assert_eq!(conf.to_string(), "[one]\na = 1\n");
     /// ```
     pub fn section<S>(mut self, name: S) -> Self
     where
@@ -238,11 +237,11 @@ impl Ini {
     /// let mut conf = Ini::new().section("test")
     ///                      .item("value", 10);
     ///
-    /// assert_eq!(conf.to_string(), "[test]\nvalue = 10");
+    /// assert_eq!(conf.to_string(), "[test]\nvalue = 10\n");
     ///
     /// // change existing value
     /// conf = conf.section("test").item("value", "updated");
-    /// assert_eq!(conf.to_string(), "[test]\nvalue = updated");
+    /// assert_eq!(conf.to_string(), "[test]\nvalue = updated\n");
     /// ```
     pub fn item<N, V>(mut self, name: N, value: V) -> Self
     where
@@ -344,7 +343,8 @@ impl Ini {
     ///                               "white = #ffffff",
     ///                               "",
     ///                               "[numbers]",
-    ///                               "round_pi = 3"
+    ///                               "round_pi = 3",
+    ///                               ""
     ///                              ].join("\n"));
     /// ```
     pub fn items<K, V, I>(mut self, items: I) -> Self
@@ -372,11 +372,11 @@ impl Ini {
     ///                                   ].join("\n")).unwrap();
     /// // remove section
     /// config = config.section("one").clear();
-    /// assert_eq!(config.to_string(), "[two]\nb = 2");
+    /// assert_eq!(config.to_string(), "[two]\nb = 2\n");
     ///
     /// // clear section from old data and add new
     /// config = config.section("two").clear().item("a", 1);
-    /// assert_eq!(config.to_string(), "[two]\na = 1");
+    /// assert_eq!(config.to_string(), "[two]\na = 1\n");
     /// ```
     pub fn clear(mut self) -> Self {
         self.document.remove(&self.last_section_name);
@@ -396,7 +396,7 @@ impl Ini {
     ///
     /// config = config.section("one").erase("b");
     ///
-    /// assert_eq!(config.to_string(), "[one]\na = 1");
+    /// assert_eq!(config.to_string(), "[one]\na = 1\n");
     /// ```
     pub fn erase(mut self, key: &str) -> Self {
         self.document.get_mut(&self.last_section_name).and_then(|s| s.remove(key));

@@ -3,7 +3,6 @@
 ![Rust](https://github.com/pinecrew/tini/workflows/Rust/badge.svg)
 [![Crates](https://img.shields.io/crates/v/tini.svg)](https://crates.io/crates/tini)
 [![Docs](https://docs.rs/tini/badge.svg)](https://docs.rs/tini)
-[![Examples](https://img.shields.io/badge/examples-latest-yellow)](./examples)
 
 ## Usage
 
@@ -66,4 +65,4 @@ fn main() {
 }
 ```
 
-See more in [examples](./examples) folder and in [documentation](https://docs.rs/tini).
+See more examples in [documentation](https://docs.rs/tini).

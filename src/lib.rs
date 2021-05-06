@@ -620,8 +620,27 @@ impl<'a> Iterator for SectionIter<'a> {
 }
 
 impl<'a> SectionIter<'a> {
-    pub fn get(&'a self, key: &str) -> Option<&'a String> {
-        self.document.get(key)
+    /// Get scalar value of key
+    ///
+    /// - output type `T` must implement [FromStr] trait for auto conversion
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::from_string("[section]\nkey=1\nvalue=2").unwrap();
+    ///
+    /// for (name, section) in conf.iter() {
+    ///     let key = section.get("key");
+    ///     let value = section.get("value");
+    ///     assert_eq!(key, Some(1));
+    ///     assert_eq!(value, Some(2));
+    /// }
+    /// ```
+    pub fn get<T>(&'a self, key: &str) -> Option<T>
+    where
+        T: FromStr,
+    {
+        self.document.get(key).and_then(|x| x.parse().ok())
     }
 }
 

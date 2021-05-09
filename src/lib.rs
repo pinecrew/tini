@@ -492,7 +492,8 @@ impl Ini {
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
     pub fn section_iter(&self, section: &str) -> SectionIter {
-        SectionIter { iter: self.document.get(section).unwrap_or(&self.empty_section).iter() }
+        let section = self.document.get(section).unwrap_or(&self.empty_section);
+        SectionIter { document: &section, iter: section.iter() }
     }
 
     /// Iterate over all sections in order of appearance, yielding pairs of
@@ -582,7 +583,7 @@ impl<'a> Iterator for IniIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(name, section)| (name, SectionIter { iter: section.iter() }))
+        self.iter.next().map(|(name, section)| (name, SectionIter { document: &section, iter: section.iter() }))
     }
 }
 
@@ -606,6 +607,7 @@ type Section = OrderedHashMap<String, String>;
 /// An iterator over the entries of a section
 pub struct SectionIter<'a> {
     #[doc(hidden)]
+    document: &'a Section,
     iter: ordered_hashmap::Iter<'a, String, String>,
 }
 
@@ -614,6 +616,31 @@ impl<'a> Iterator for SectionIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
+    }
+}
+
+impl<'a> SectionIter<'a> {
+    /// Get scalar value of key
+    ///
+    /// - output type `T` must implement [FromStr] trait for auto conversion
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::from_string("[section]\nkey=1\nvalue=2").unwrap();
+    ///
+    /// for (name, section) in conf.iter() {
+    ///     let key = section.get("key");
+    ///     let value = section.get("value");
+    ///     assert_eq!(key, Some(1));
+    ///     assert_eq!(value, Some(2));
+    /// }
+    /// ```
+    pub fn get<T>(&'a self, key: &str) -> Option<T>
+    where
+        T: FromStr,
+    {
+        self.document.get(key).and_then(|x| x.parse().ok())
     }
 }
 

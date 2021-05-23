@@ -17,7 +17,7 @@ pub enum Parsed {
 
 /// parse single line of ini file
 pub fn parse_line(line: &str, index: usize) -> Result<Parsed, ParseError> {
-    let content = match line.split(';').next() {
+    let content = match line.split(&[';', '#'][..]).next() {
         Some(value) => value.trim(),
         None => return Ok(Parsed::Empty),
     };
@@ -89,9 +89,9 @@ mod test {
 
     #[test]
     fn weird_name() -> Result<(), Error> {
-        match parse_line("_.,:(){}-#@&*| = 100", 0)? {
+        match parse_line("_.,:(){}-@&*| = 100 ; so weird", 0)? {
             Parsed::Value(name, text) => {
-                assert_eq!(name, String::from("_.,:(){}-#@&*|"));
+                assert_eq!(name, String::from("_.,:(){}-@&*|"));
                 assert_eq!(text, String::from("100"));
             }
             _ => assert!(false),
@@ -162,6 +162,18 @@ mod test {
             Parsed::Value(key, value) => {
                 assert_eq!(key, String::from("a"));
                 assert_eq!(value.len(), 0);
+            }
+            _ => assert!(false),
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unix_comment() -> Result<(), Error> {
+        match parse_line("a = 3 # 42", 0)? {
+            Parsed::Value(key, value) => {
+                assert_eq!(key, String::from("a"));
+                assert_eq!(value, "3");
             }
             _ => assert!(false),
         }

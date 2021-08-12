@@ -473,7 +473,7 @@ impl Ini {
             .and_then(|x| x.split(sep).map(|s| s.trim().parse()).collect::<Result<Vec<T>, _>>().ok())
     }
 
-    /// An iterator visiting all key-value pairs in order of appearance in section.
+    /// An iterator visiting all key-value pairs of a section in order of appearance.
     ///
     /// If section with given name doesn't exist in document, method returns empty iterator
     ///
@@ -491,13 +491,12 @@ impl Ini {
     ///
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
-    pub fn section_iter(&self, section: &str) -> SectionIter {
-        SectionIter { iter: self.document.get(section).unwrap_or(&self.empty_section).iter() }
+    pub fn section_iter(&self, section: &str) -> ordered_hashmap::Iter<String, String> {
+        self.document.get(section).unwrap_or(&self.empty_section).iter()
     }
 
-    /// Iterate over all sections in order of appearance, yielding pairs of
-    /// section name and iterator over the section elements. The iterator
-    /// element type is `(&'a String, SectionIter<'a>)`.
+    /// Iterate over all sections in order of appearance, yielding pairs of section name
+    /// and section instance, which can be iterated over or queried similarly to Ini instances.
     ///
     /// # Example
     /// ```
@@ -508,10 +507,10 @@ impl Ini {
     ///                      .section("bar")
     ///                      .item("one", "1");
     ///
-    /// for (name, section_iter) in conf.iter() {
+    /// for (name, section) in conf.iter() {
     ///     match name.as_str() {
-    ///         "foo" => assert_eq!(section_iter.count(), 2),
-    ///         "bar" => assert_eq!(section_iter.count(), 1),
+    ///         "foo" => assert_eq!(section.iter().count(), 2),
+    ///         "bar" => assert_eq!(section.iter().count(), 1),
     ///         _ => assert!(false),
     ///     }
     /// }
@@ -532,14 +531,14 @@ impl Ini {
     ///                          .section("bar")
     ///                          .item("one", "1");
     ///
-    /// for (name, section_iter) in conf.iter_mut() {
-    ///     for (key, val) in section_iter {
+    /// for (name, section) in conf.iter_mut() {
+    ///     for (key, val) in section.iter_mut() {
     ///         *val = String::from("replaced");
     ///     }
     /// }
     ///
-    /// for (name, section_iter) in conf.iter() {
-    ///     for (key, val) in section_iter {
+    /// for (name, section) in conf.iter() {
+    ///     for (key, val) in section.iter() {
     ///         assert_eq!(val.as_str(), "replaced");
     ///     }
     /// }
@@ -555,7 +554,7 @@ impl fmt::Display for Ini {
             // insert section block
             items.push(format!("[{}]", name));
             // add items
-            for (key, value) in section {
+            for (key, value) in section.iter() {
                 items.push(format!("{} = {}", key, value));
             }
             // and blank line between sections
@@ -571,65 +570,37 @@ impl Default for Ini {
     }
 }
 
-/// An iterator over the sections of an ini documet
+/// An iterator over the sections of an ini document
 pub struct IniIter<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::Iter<'a, String, Section>,
 }
 
 impl<'a> Iterator for IniIter<'a> {
-    type Item = (&'a String, SectionIter<'a>);
+    type Item = (&'a String, &'a Section);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(name, section)| (name, SectionIter { iter: section.iter() }))
+        self.iter.next()
     }
 }
 
-/// A mutable iterator over the sections of an ini documet
+/// A mutable iterator over the sections of an ini document
 pub struct IniIterMut<'a> {
     #[doc(hidden)]
     iter: ordered_hashmap::IterMut<'a, String, Section>,
 }
 
 impl<'a> Iterator for IniIterMut<'a> {
-    type Item = (&'a String, SectionIterMut<'a>);
+    type Item = (&'a String, &'a mut Section);
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(name, section)| (name, SectionIterMut { iter: section.iter_mut() }))
+        self.iter.next()
     }
 }
 
 type Section = OrderedHashMap<String, String>;
-
-/// An iterator over the entries of a section
-pub struct SectionIter<'a> {
-    #[doc(hidden)]
-    iter: ordered_hashmap::Iter<'a, String, String>,
-}
-
-impl<'a> Iterator for SectionIter<'a> {
-    type Item = (&'a String, &'a String);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
-
-/// A mutable iterator over the entries of a section
-pub struct SectionIterMut<'a> {
-    #[doc(hidden)]
-    iter: ordered_hashmap::IterMut<'a, String, String>,
-}
-
-impl<'a> Iterator for SectionIterMut<'a> {
-    type Item = (&'a String, &'a mut String);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next()
-    }
-}
 
 #[cfg(test)]
 mod library_test {
@@ -719,6 +690,30 @@ mod library_test {
         let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3")?;
         let keys: Vec<&String> = ini.document.get("a").unwrap().iter().map(|(k, _)| k).collect();
         assert_eq!(["c", "b", "a"], keys[..]);
+        Ok(())
+    }
+
+    #[test]
+    fn random_access_section() -> Result<(), Error> {
+        let ini = Ini::from_string("[a]\nc = 1\nb = 2\na = 3\n\n[b]\na = 1\nb = 2\nc = 3\n\n[c]\na=0\nd=4")?;
+        for (name, section) in ini.iter() {
+            match name.as_str() {
+                "a" => {
+                    assert_eq!(section.get("a"), Some(&"3".to_owned()));
+                    assert_eq!(section.get("d"), None);
+                },
+                "b" => {
+                    assert_eq!(section.get("a"), Some(&"1".to_owned()));
+                    assert_eq!(section.get("d"), None);
+                },
+                "c" => {
+                    assert_eq!(section.get("a"), Some(&"0".to_owned()));
+                    assert_eq!(section.get("b"), None);
+                    assert_eq!(section.get("d"), Some(&"4".to_owned()));
+                },
+                _ => unreachable!()
+            }
+        }
         Ok(())
     }
 }

@@ -492,8 +492,7 @@ impl Ini {
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
     pub fn section_iter(&self, section: &str) -> SectionIter {
-        let section = self.document.get(section).unwrap_or(&self.empty_section);
-        SectionIter { document: &section, iter: section.iter() }
+        SectionIter { iter: self.document.get(section).unwrap_or(&self.empty_section).iter() }
     }
 
     /// Iterate over all sections in order of appearance, yielding pairs of
@@ -583,7 +582,7 @@ impl<'a> Iterator for IniIter<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(name, section)| (name, SectionIter { document: &section, iter: section.iter() }))
+        self.iter.next().map(|(name, section)| (name, SectionIter { iter: section.iter() }))
     }
 }
 
@@ -607,7 +606,6 @@ type Section = OrderedHashMap<String, String>;
 /// An iterator over the entries of a section
 pub struct SectionIter<'a> {
     #[doc(hidden)]
-    document: &'a Section,
     iter: ordered_hashmap::Iter<'a, String, String>,
 }
 
@@ -616,12 +614,6 @@ impl<'a> Iterator for SectionIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
-    }
-}
-
-impl<'a> SectionIter<'a> {
-    pub fn get(&'a self, key: &str) -> Option<&'a String> {
-        self.document.get(key)
     }
 }
 

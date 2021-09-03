@@ -68,7 +68,7 @@ impl Ini {
         Ini { document: OrderedHashMap::new(), last_section_name: String::new(), empty_section: Section::new() }
     }
 
-    /// Private construct method which creaate [Ini] struct from input string
+    /// Private construct method which create [Ini] struct from input string
     fn parse(string: &str) -> Result<Ini, Error> {
         let mut result = Ini::new();
         for (index, line) in string.lines().enumerate() {
@@ -251,6 +251,7 @@ impl Ini {
         self.document
             .entry(self.last_section_name.clone())
             .or_insert_with(Section::new)
+            .inner
             .insert(name.into(), value.to_string());
         self
     }
@@ -405,7 +406,7 @@ impl Ini {
 
     /// Private method which get value by `key` from `section`
     fn get_raw(&self, section: &str, key: &str) -> Option<&String> {
-        self.document.get(section).and_then(|s| s.get(key))
+        self.document.get(section).and_then(|s| s.get_raw(key))
     }
 
     /// Get scalar value of key in section.
@@ -491,7 +492,7 @@ impl Ini {
     ///
     /// assert_eq!(conf.section_iter("absent").count(), 0);
     /// ```
-    pub fn section_iter(&self, section: &str) -> ordered_hashmap::Iter<String, String> {
+    pub fn section_iter(&self, section: &str) -> SectionIter {
         self.document.get(section).unwrap_or(&self.empty_section).iter()
     }
 
@@ -600,7 +601,88 @@ impl<'a> Iterator for IniIterMut<'a> {
     }
 }
 
-type Section = OrderedHashMap<String, String>;
+#[derive(Debug)]
+pub struct Section {
+    inner: OrderedHashMap<String, String>
+}
+
+pub struct SectionIter<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::Iter<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIter<'a> {
+    type Item = (&'a String, &'a String);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+pub struct SectionIterMut<'a> {
+    #[doc(hidden)]
+    iter: ordered_hashmap::IterMut<'a, String, String>,
+}
+
+impl<'a> Iterator for SectionIterMut<'a> {
+    type Item = (&'a String, &'a mut String);
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
+impl Section {
+    pub fn new() -> Self {
+        Section { inner: OrderedHashMap::new() }
+    }
+
+    /// Get scalar value of key
+    ///
+    /// - output type `T` must implement [FromStr] trait for auto conversion
+    ///
+    /// # Example
+    /// ```
+    /// # use tini::Ini;
+    /// let conf = Ini::from_string("[section]\nkey=1\nvalue=2").unwrap();
+    ///
+    /// for (name, section) in conf.iter() {
+    ///     let key = section.get("key");
+    ///     let value = section.get("value");
+    ///     assert_eq!(key, Some(1));
+    ///     assert_eq!(value, Some(2));
+    /// }
+    /// ```
+    pub fn get<'a, T>(&'a self, key: &str) -> Option<T>
+    where
+        T: FromStr
+    {
+        self.inner.get(key).and_then(|x| x.parse().ok())
+    }
+
+    pub fn get_raw<'a>(&'a self, key: &str) -> Option<&String> {
+        self.inner.get(key)
+    }
+
+    pub fn remove(&mut self, key: &str) -> Option<String> {
+        self.inner.remove(key)
+    }
+
+    pub fn insert(&mut self, key: String, value: String) {
+        self.inner.insert(key, value);
+    }
+
+    pub fn iter(&self) -> SectionIter {
+        SectionIter { iter: self.inner.iter() }
+    }
+
+    pub fn iter_mut(&mut self) -> SectionIterMut {
+        SectionIterMut { iter: self.inner.iter_mut() }
+    }
+}
+
 
 #[cfg(test)]
 mod library_test {
@@ -699,17 +781,17 @@ mod library_test {
         for (name, section) in ini.iter() {
             match name.as_str() {
                 "a" => {
-                    assert_eq!(section.get("a"), Some(&"3".to_owned()));
-                    assert_eq!(section.get("d"), None);
+                    assert_eq!(section.get_raw("a"), Some(&"3".to_owned()));
+                    assert_eq!(section.get_raw("d"), None);
                 },
                 "b" => {
-                    assert_eq!(section.get("a"), Some(&"1".to_owned()));
-                    assert_eq!(section.get("d"), None);
+                    assert_eq!(section.get_raw("a"), Some(&"1".to_owned()));
+                    assert_eq!(section.get_raw("d"), None);
                 },
                 "c" => {
-                    assert_eq!(section.get("a"), Some(&"0".to_owned()));
-                    assert_eq!(section.get("b"), None);
-                    assert_eq!(section.get("d"), Some(&"4".to_owned()));
+                    assert_eq!(section.get_raw("a"), Some(&"0".to_owned()));
+                    assert_eq!(section.get_raw("b"), None);
+                    assert_eq!(section.get_raw("d"), Some(&"4".to_owned()));
                 },
                 _ => unreachable!()
             }

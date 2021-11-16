@@ -250,17 +250,6 @@ where
     }
 }
 
-impl<K, V> IntoIterator for OrderedHashMap<K, V>
-where
-    K: Eq + Hash,
-{
-    type Item = (K, V);
-    type IntoIter = IntoIter<K, V>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        IntoIter { base: self.base, keys_iterator: self.keys.into_iter() }
-    }
-}
 
 impl<K, V> FromIterator<(K, V)> for OrderedHashMap<K, V>
 where

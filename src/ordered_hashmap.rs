@@ -250,7 +250,6 @@ where
     }
 }
 
-
 impl<K, V> FromIterator<(K, V)> for OrderedHashMap<K, V>
 where
     K: Eq + Hash + Clone,

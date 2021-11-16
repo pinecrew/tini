@@ -603,7 +603,7 @@ impl<'a> Iterator for IniIterMut<'a> {
 
 #[derive(Debug)]
 pub struct Section {
-    inner: OrderedHashMap<String, String>
+    inner: OrderedHashMap<String, String>,
 }
 
 pub struct SectionIter<'a> {
@@ -657,7 +657,7 @@ impl Section {
     /// ```
     pub fn get<'a, T>(&'a self, key: &str) -> Option<T>
     where
-        T: FromStr
+        T: FromStr,
     {
         self.inner.get(key).and_then(|x| x.parse().ok())
     }
@@ -682,7 +682,6 @@ impl Section {
         SectionIterMut { iter: self.inner.iter_mut() }
     }
 }
-
 
 #[cfg(test)]
 mod library_test {
@@ -783,17 +782,17 @@ mod library_test {
                 "a" => {
                     assert_eq!(section.get_raw("a"), Some(&"3".to_owned()));
                     assert_eq!(section.get_raw("d"), None);
-                },
+                }
                 "b" => {
                     assert_eq!(section.get_raw("a"), Some(&"1".to_owned()));
                     assert_eq!(section.get_raw("d"), None);
-                },
+                }
                 "c" => {
                     assert_eq!(section.get_raw("a"), Some(&"0".to_owned()));
                     assert_eq!(section.get_raw("b"), None);
                     assert_eq!(section.get_raw("d"), Some(&"4".to_owned()));
-                },
-                _ => unreachable!()
+                }
+                _ => unreachable!(),
             }
         }
         Ok(())
